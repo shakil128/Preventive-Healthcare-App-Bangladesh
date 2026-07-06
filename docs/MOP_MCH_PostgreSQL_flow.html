@@ -45,7 +45,7 @@
 
 <h1>MOP — MCH Preventive Healthcare Platform</h1>
 <p class="sub">Field-officer অ্যাকাউন্ট তৈরি, mother/child নিবন্ধন ও clinical visit — সবই PostgreSQL-এ (single source of truth), SQLite শুধু offline cache</p>
-<p class="meta">Method of Procedure · সংস্করণ 1.0 · তারিখ 06 Jul 2026 · ব্রাঞ্চ <code>claude/spring-boot-startup-error-d5igrb</code></p>
+<p class="meta">Method of Procedure · সংস্করণ 1.1 · তারিখ 06 Jul 2026 · ব্রাঞ্চ <code>claude/spring-boot-startup-error-d5igrb</code></p>
 
 <div class="banner">
 <b>স্থাপত্য (Architecture) সংক্ষেপে:</b> Backend (Spring Boot) = লেখা ও পড়ার একমাত্র কর্তৃত্ব (system of record) → <b>PostgreSQL</b>।
@@ -201,8 +201,47 @@ Risk/nutrition শ্রেণিবিন্যাস (classification) সা�
 <li><code>mobile/lib/pages/AncVisitPage.dart</code>, <code>ChildHealthPage.dart</code>, <code>OnboardModal.dart</code></li>
 </ul>
 
+<h2 class="pagebreak">7 · Native PostgreSQL রান গাইড (IntelliJ + Android Studio)</h2>
+<p class="sub">লোকাল Windows-এ PostgreSQL-এর সাথে backend + Flutter অ্যাপ চালানোর সংশোধিত ধাপ।</p>
+
+<div class="warn">
+<b>প্রথমে ৩টি ভুল সংশোধন (এগুলো হুবহু অনুসরণ করলে run ব্যর্থ হবে):</b>
+<table style="margin-top:6px">
+<tr><th style="width:34%">প্রচলিত ভুল</th><th>সঠিক তথ্য (কোড অনুযায়ী)</th></tr>
+<tr><td>Main class <code>MchSurveillanceBackendApplication</code></td><td class="ok">সঠিক: <code>bd.gov.mch.MchApplication</code></td></tr>
+<tr><td>"CRITICAL STEP": <code>@Column</code> annotation যোগ করা</td><td class="ok">দরকার নেই — <code>Worker</code>/<code>User</code>/<code>Beneficiary</code>-তে <code>@Column</code> <b>আগে থেকেই আছে</b>। আবার যোগ করলে <span class="bad">duplicate annotation → compile error</span>।</td></tr>
+<tr><td><code>flutter pub run build_runner build …</code></td><td class="ok">চালাবেন না — প্রজেক্টে <code>build_runner</code> নেই, কমান্ডটি fail করবে।</td></tr>
+</table>
+</div>
+
+<div class="banner">
+<b>Branch খেয়াল করুন:</b> PostgreSQL read/write, onboarding ও registration-এর সব ফিক্স আছে
+<code>claude/spring-boot-startup-error-d5igrb</code> ব্রাঞ্চে। আপনার ফোল্ডার যদি
+<code>…rebuild-xszyf2</code> হয়, তাহলে ঐ ব্রাঞ্চে ফিক্সগুলো নেই — চালানোর আগে সঠিক ব্রাঞ্চে যান/pull করুন:
+<code>git fetch origin && git checkout claude/spring-boot-startup-error-d5igrb &amp;&amp; git pull</code>
+</div>
+
+<h3>পার্ট ১ — ডাটাবেজ ও ব্যাকএন্ড (IntelliJ IDEA)</h3>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
+<tr><td class="step">1.1</td><td>pgAdmin/psql-এ ডাটাবেজ তৈরি: <code>preventive_healthcare</code>, ইউজার <code>zahra</code> (পাসওয়ার্ড <code>zahra</code>), zahra-কে DB-র <b>Owner</b> বানান (Flyway-র CREATE অধিকার লাগে)।</td></tr>
+<tr><td class="step">1.2</td><td>IntelliJ-এ <code>backend</code> খুলুন। <b>Maven Reload</b> → <b>Build ▸ Rebuild Project</b> (যাতে <code>application.yml</code> ও <code>db/migration</code> classpath-এ কপি হয়)।</td></tr>
+<tr><td class="step">1.3</td><td>Run Configuration: Main class = <code>bd.gov.mch.MchApplication</code>। কোনো extra profile/env দরকার নেই — <code>application.yml</code>-এ ডিফল্ট datasource সেট করা আছে।</td></tr>
+<tr><td class="step">1.4</td><td>সবুজ ▶ Run। লগে Flyway <code>V1__init</code> সফল ও <code>Started MchApplication</code> দেখলে backend রেডি (port 8080)।</td></tr>
+</table>
+<p class="sub"><b>@Column বা entity কোড ছোঁবেন না</b> — schema ও entity ইতিমধ্যে মিলে আছে, <code>ddl-auto: validate</code> pass করবে।</p>
+
+<h3>পার্ট ২ — ফ্রন্টএন্ড (Android Studio)</h3>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
+<tr><td class="step">2.1</td><td><code>mobile</code> খুলুন → Terminal-এ <code>flutter clean</code> তারপর <code>flutter pub get</code>। <span class="bad">build_runner চালাবেন না।</span></td></tr>
+<tr><td class="step">2.2</td><td>API URL ফাইল: <code>mobile/lib/config/api_config.dart</code> (constants.dart নয়)। <b>Emulator-এর জন্য ডিফল্ট <code>10.0.2.2:8080</code> আগেই সেট</b> — বদলানোর দরকার নেই।</td></tr>
+<tr><td class="step">2.3</td><td>আসল ফোন/Chrome হলে run-এ পাস করুন: <code>--dart-define=API_BASE_URL=http://&lt;PC-LAN-IP&gt;:8080</code> (ফোন) বা <code>http://localhost:8080</code> (Chrome web)।</td></tr>
+<tr><td class="step">2.4</td><td>Emulator চালু করে ▶ Run, অথবা Terminal-এ <code>flutter run</code>। অ্যাপ এখন Windows-এর PostgreSQL-এর সাথে সরাসরি যুক্ত।</td></tr>
+</table>
+
 <div class="foot">
-MCH Preventive Healthcare Platform · MOP v1.0 · এই নথি নিরাপদভাবে সংরক্ষণ করুন। Demo credentials শুধু ডেমো বিল্ডের জন্য; প্রোডাকশনে hash করা password ও token ব্যবহার করুন।
+MCH Preventive Healthcare Platform · MOP v1.1 · এই নথি নিরাপদভাবে সংরক্ষণ করুন। Demo credentials শুধু ডেমো বিল্ডের জন্য; প্রোডাকশনে hash করা password ও token ব্যবহার করুন।
 </div>
 
 </body>
