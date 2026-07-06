@@ -2,247 +2,367 @@
 <html lang="bn">
 <head>
 <meta charset="utf-8">
+<title>MOP &amp; System Architecture Guide — MCH Surveillance</title>
 <style>
-  @page { size: A4; margin: 16mm 14mm; }
+  @page { size: A4; margin: 16mm 14mm 20mm; }
   * { box-sizing: border-box; }
   body {
     font-family: "Noto Sans Bengali", "Segoe UI", system-ui, sans-serif;
-    color: #23201a; font-size: 12px; line-height: 1.55; margin: 0;
+    color: #23201a; font-size: 11.3px; line-height: 1.5; margin: 0;
   }
-  h1 { font-size: 22px; color: #1f5e4d; margin: 0 0 2px; }
-  h2 { font-size: 15px; color: #1f5e4d; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #d8e6e0; }
-  h3 { font-size: 12.5px; margin: 14px 0 5px; color: #2b6b58; }
-  .sub { color: #6b675e; font-size: 11.5px; margin: 0 0 4px; }
+  h1 { font-size: 23px; color: #1f5e4d; margin: 0 0 2px; }
+  h2 { font-size: 15px; color: #fff; background: #1f5e4d; margin: 16px 0 8px;
+       padding: 6px 12px; border-radius: 6px; }
+  h3 { font-size: 12.5px; margin: 12px 0 5px; color: #2b6b58; border-left: 4px solid #1f5e4d; padding-left: 8px; }
+  h4 { font-size: 12px; margin: 10px 0 4px; color: #23201a; }
+  .sub { color: #6b675e; font-size: 12px; margin: 0 0 4px; }
   .meta { color: #8a857b; font-size: 10.5px; margin-bottom: 6px; }
-  code { background: #eef3f1; padding: 1px 5px; border-radius: 4px; font-family: "Consolas", monospace; font-size: 10.5px; color: #124; }
-  table { border-collapse: collapse; width: 100%; margin: 6px 0; }
-  th, td { border: 1px solid #d8d4ca; padding: 6px 9px; text-align: left; vertical-align: top; }
-  th { background: #1f5e4d; color: #fff; font-weight: 600; font-size: 11px; }
+  code { background: #eef3f1; padding: 1px 5px; border-radius: 4px; font-family: Consolas, monospace; font-size: 10.5px; color: #124; }
+  pre { background: #10251f; color: #d7efe6; border-radius: 8px; padding: 8px 12px;
+        font-family: Consolas, monospace; font-size: 10px; line-height: 1.45; overflow: hidden; white-space: pre-wrap; }
+  pre .c { color: #7fae9f; }
+  table { border-collapse: collapse; width: 100%; margin: 5px 0; }
+  th, td { border: 1px solid #d8d4ca; padding: 4.5px 8px; text-align: left; vertical-align: top; }
+  th { background: #2b6b58; color: #fff; font-weight: 600; font-size: 11px; }
   tr:nth-child(even) td { background: #f6f4ef; }
-  .step { color: #1f5e4d; font-weight: 700; }
-  .banner { background: #eef6f3; border-left: 4px solid #1f5e4d; padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
-  .warn { background: #fbeee9; border-left: 4px solid #c0492e; padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
+  .step { color: #1f5e4d; font-weight: 700; white-space: nowrap; }
+  .banner { background: #eef6f3; border-left: 4px solid #1f5e4d; padding: 7px 11px; border-radius: 4px; margin: 8px 0; }
+  .warn { background: #fbeee9; border-left: 4px solid #c0492e; padding: 7px 11px; border-radius: 4px; margin: 8px 0; }
+  .note { background: #fdf6e9; border-left: 4px solid #b5792a; padding: 7px 11px; border-radius: 4px; margin: 8px 0; }
   .ok { color: #1f7a56; font-weight: 700; }
   .bad { color: #c0492e; font-weight: 700; }
-  .flow { width: 100%; margin: 6px 0; }
+  .pill { display: inline-block; background: #1f5e4d; color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 10px; margin-right: 4px; }
+  .flow { width: 100%; margin: 8px 0; }
   .node { fill: #ffffff; stroke: #1f5e4d; stroke-width: 1.5; }
   .node-db { fill: #eaf3ef; stroke: #1f5e4d; stroke-width: 2; }
   .node-cache { fill: #fdf6e9; stroke: #b5792a; stroke-width: 1.5; }
+  .lane { fill: #f6f4ef; stroke: #d8d4ca; stroke-width: 1; }
   .ntext { font-size: 10px; fill: #23201a; font-family: "Segoe UI", sans-serif; }
-  .ntext b { font-weight: 700; }
-  .edge { stroke: #7a8f88; stroke-width: 1.4; fill: none; marker-end: url(#arrow); }
-  .elabel { font-size: 8.5px; fill: #5c594f; font-family: "Segoe UI", sans-serif; }
-  .pill { display:inline-block; background:#1f5e4d; color:#fff; border-radius:10px; padding:1px 8px; font-size:10px; margin-right:4px; }
-  .foot { margin-top: 18px; padding-top: 8px; border-top: 1px solid #ddd; color: #8a857b; font-size: 10px; }
-  ul { margin: 4px 0 4px 0; padding-left: 18px; }
-  li { margin: 2px 0; }
-  .two { display: flex; gap: 14px; }
-  .two > div { flex: 1; }
+  .edge { stroke: #7a8f88; stroke-width: 1.4; fill: none; marker-end: url(#arr); }
+  .edge2 { stroke: #b5792a; stroke-width: 1.4; stroke-dasharray: 4 3; fill: none; marker-end: url(#arr2); }
+  .elabel { font-size: 8.6px; fill: #5c594f; font-family: "Segoe UI", sans-serif; }
+  .footer { position: fixed; bottom: -12mm; left: 0; right: 0; text-align: center;
+            color: #8a857b; font-size: 9.5px; border-top: 1px solid #e2ded4; padding-top: 3px; }
+  ul { margin: 4px 0; padding-left: 18px; }
+  li { margin: 3px 0; }
   .pagebreak { page-break-before: always; }
+  .toc td { border: none; border-bottom: 1px dotted #d8d4ca; padding: 4px 6px; }
+  .kv b { color: #1f5e4d; }
 </style>
 </head>
 <body>
 
-<h1>MOP — MCH Preventive Healthcare Platform</h1>
-<p class="sub">Field-officer অ্যাকাউন্ট তৈরি, mother/child নিবন্ধন ও clinical visit — সবই PostgreSQL-এ (single source of truth), SQLite শুধু offline cache</p>
-<p class="meta">Method of Procedure · সংস্করণ 1.1 · তারিখ 06 Jul 2026 · ব্রাঞ্চ <code>claude/spring-boot-startup-error-d5igrb</code></p>
+<div class="footer">Preventive Healthcare Programme — MCH Surveillance · MOP &amp; System Architecture Guide · v2.0</div>
 
-<div class="banner">
-<b>স্থাপত্য (Architecture) সংক্ষেপে:</b> Backend (Spring Boot) = লেখা ও পড়ার একমাত্র কর্তৃত্ব (system of record) → <b>PostgreSQL</b>।
-মোবাইল অ্যাপের লোকাল <b>SQLite</b> শুধু <b>cache</b> — অনলাইনে সার্ভার থেকে রিফ্রেশ হয়, অফলাইনে পড়ার জন্য fallback দেয়।
-Risk/nutrition শ্রেণিবিন্যাস (classification) সার্ভারে হয়, তাই অ্যাপ ও পোর্টাল সবসময় একমত।
-</div>
+<!-- ================= COVER / OVERVIEW ================= -->
+<h1>MOP &amp; System Architecture Guide</h1>
+<p class="sub">MCH Surveillance System — উইন্ডোজ এনভায়রনমেন্টে নেটিভ PostgreSQL ব্যবহার করে ব্যাকএন্ড (IntelliJ IDEA) ও ফ্রন্টএন্ড (Android Studio) চালানোর ধাপে ধাপে নির্দেশনা, সিস্টেমের মৌলিক আর্কিটেকচার, ডেটা ফ্লো, যাচাই ও ট্রাবলশুটিং</p>
+<p class="meta">Version 2.0 · 06 Jul 2026 · Branch: <code>claude/spring-boot-startup-error-d5igrb</code> · Repo: <code>shakil128/Preventive-Healthcare-App-Bangladesh</code></p>
 
-<h2>1 · সিস্টেম ডেটা-ফ্লো (Read-through + Write-through)</h2>
-
-<svg class="flow" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#7a8f88"/>
-    </marker>
-  </defs>
-
-  <!-- Field App -->
-  <rect class="node" x="20" y="30" width="150" height="70" rx="8"/>
-  <text class="ntext" x="95" y="55" text-anchor="middle"><b>Field Officer App</b></text>
-  <text class="ntext" x="95" y="72" text-anchor="middle">Flutter (Android)</text>
-  <text class="ntext" x="95" y="88" text-anchor="middle">Register / Visit</text>
-
-  <!-- Admin Portal -->
-  <rect class="node" x="20" y="180" width="150" height="70" rx="8"/>
-  <text class="ntext" x="95" y="205" text-anchor="middle"><b>Admin Portal</b></text>
-  <text class="ntext" x="95" y="222" text-anchor="middle">Supervisor view</text>
-  <text class="ntext" x="95" y="238" text-anchor="middle">Onboard officer</text>
-
-  <!-- Local cache -->
-  <rect class="node-cache" x="235" y="105" width="130" height="66" rx="8"/>
-  <text class="ntext" x="300" y="130" text-anchor="middle"><b>SQLite cache</b></text>
-  <text class="ntext" x="300" y="146" text-anchor="middle">offline read</text>
-  <text class="ntext" x="300" y="162" text-anchor="middle">fallback only</text>
-
-  <!-- Backend -->
-  <rect class="node" x="435" y="95" width="150" height="86" rx="8"/>
-  <text class="ntext" x="510" y="120" text-anchor="middle"><b>Spring Boot API</b></text>
-  <text class="ntext" x="510" y="137" text-anchor="middle">/api/beneficiaries</text>
-  <text class="ntext" x="510" y="152" text-anchor="middle">/api/workers</text>
-  <text class="ntext" x="510" y="167" text-anchor="middle">Risk / MUAC classify</text>
-
-  <!-- Postgres -->
-  <rect class="node-db" x="640" y="100" width="100" height="76" rx="8"/>
-  <text class="ntext" x="690" y="128" text-anchor="middle"><b>PostgreSQL</b></text>
-  <text class="ntext" x="690" y="145" text-anchor="middle">users</text>
-  <text class="ntext" x="690" y="160" text-anchor="middle">beneficiaries</text>
-
-  <!-- edges app -> backend (write) -->
-  <path class="edge" d="M170,58 C300,45 360,90 435,115"/>
-  <text class="elabel" x="300" y="52">① write (POST) — Postgres authoritative</text>
-
-  <!-- backend -> postgres -->
-  <path class="edge" d="M585,138 L640,138"/>
-  <text class="elabel" x="590" y="130">② persist</text>
-
-  <!-- backend -> cache (refresh) -->
-  <path class="edge" d="M435,150 C400,150 380,140 365,138"/>
-  <text class="elabel" x="372" y="185">③ refresh cache</text>
-
-  <!-- cache -> app (read) -->
-  <path class="edge" d="M235,130 C210,120 195,95 170,80"/>
-  <text class="elabel" x="150" y="112">④ read</text>
-
-  <!-- portal -> backend -->
-  <path class="edge" d="M170,212 C320,210 360,175 435,160"/>
-  <text class="elabel" x="300" y="205">onboard (POST /api/workers)</text>
-</svg>
-
-<table>
-<tr><th style="width:22%">পর্যায়</th><th>কী ঘটে</th></tr>
-<tr><td class="step">① Write</td><td>অ্যাপ/পোর্টাল সরাসরি backend-এ POST করে (নিবন্ধন, visit, onboard)। PostgreSQL-ই কর্তৃত্ব।</td></tr>
-<tr><td class="step">② Persist</td><td>Backend রেকর্ড PostgreSQL-এ সেভ করে এবং risk/MUAC সার্ভার-সাইডে শ্রেণিবিন্যাস করে।</td></tr>
-<tr><td class="step">③ Refresh cache</td><td>সার্ভারের authoritative রেকর্ড দিয়ে লোকাল SQLite cache আপডেট হয়।</td></tr>
-<tr><td class="step">④ Read</td><td>UI cache থেকে পড়ে; অনলাইনে প্রতিটি লোড আগে backend থেকে রিফ্রেশ হয়, অফলাইনে cache fallback।</td></tr>
+<table class="toc">
+<tr><td><b>১.</b> সিস্টেম আর্কিটেকচার ও কম্পোনেন্ট</td><td style="text-align:right">পৃষ্ঠা ১</td></tr>
+<tr><td><b>২.</b> এন্ড-টু-এন্ড ডেটা ফ্লো (৪টি প্রধান ফ্লো)</td><td style="text-align:right">পৃষ্ঠা ২</td></tr>
+<tr><td><b>৩.</b> MOP পার্ট ১ — ডাটাবেজ ও ব্যাকএন্ড (IntelliJ IDEA)</td><td style="text-align:right">পৃষ্ঠা ৩</td></tr>
+<tr><td><b>৪.</b> MOP পার্ট ২ — ফ্রন্টএন্ড (Android Studio)</td><td style="text-align:right">পৃষ্ঠা ৪</td></tr>
+<tr><td><b>৫.</b> ব্যবহার-ফ্লো: Admin onboarding ও Field officer কাজ</td><td style="text-align:right">পৃষ্ঠা ৪</td></tr>
+<tr><td><b>৬.</b> যাচাইকরণ (SQL + API smoke test)</td><td style="text-align:right">পৃষ্ঠা ৫</td></tr>
+<tr><td><b>৭.</b> ট্রাবলশুটিং — সাধারণ এরর ও সমাধান</td><td style="text-align:right">পৃষ্ঠা ৫</td></tr>
+<tr><td><b>৮.</b> Optimization Roadmap ও নিরাপত্তা নোট</td><td style="text-align:right">পৃষ্ঠা ৬</td></tr>
 </table>
-
-<h2>2 · প্রস্তুতি (একবার সেটআপ)</h2>
-<table>
-<tr><th style="width:8%">ধাপ</th><th>কাজ</th><th style="width:26%">যাচাই</th></tr>
-<tr><td class="step">0.1</td><td>PostgreSQL চালু; DB <code>preventive_healthcare</code>, user <code>zahra</code>/<code>zahra</code></td><td><code>psql</code> দিয়ে ঢোকা যায়</td></tr>
-<tr><td class="step">0.2</td><td>IntelliJ-এ backend <b>Run</b> (Rebuild করে নিন যাতে <code>application.yml</code> ও <code>db/migration</code> classpath-এ যায়)</td><td>লগে <code>jdbc:postgresql://…/preventive_healthcare</code> ও Flyway <code>V1__init</code>, port 8080</td></tr>
-<tr><td class="step">0.3</td><td>Android Studio-তে <code>mobile</code> খুলুন → <code>flutter pub get</code> → emulator-এ Run</td><td>ডিফল্ট URL <code>10.0.2.2:8080</code> backend-এ পৌঁছায়</td></tr>
-</table>
-<p class="sub">আসল ফোন (USB) হলে: <code>--dart-define=API_BASE_URL=http://&lt;PC-LAN-IP&gt;:8080</code> (একই WiFi)।</p>
-
-<h2>3 · Admin — field officer অ্যাকাউন্ট তৈরি</h2>
-<table>
-<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
-<tr><td class="step">3.1</td><td>অ্যাপে <b>Portal/Supervisor</b> ভিউ → লগইন <code>s.rahman</code> / <code>Admin-2026</code></td></tr>
-<tr><td class="step">3.2</td><td>সাইডবার → <b>Workers</b> → <b>Onboard field officer</b></td></tr>
-<tr><td class="step">3.3</td><td>নাম, বয়স, মোবাইল, NID, Union, Role পূরণ → <b>Create account &amp; generate login</b></td></tr>
-<tr><td class="step">3.4</td><td>Backend <code>POST /api/workers</code> → PostgreSQL-এ <b>User + Worker</b> সেভ → আসল username/password ফেরত ও স্ক্রিনে প্রদর্শন</td></tr>
-<tr><td class="step">3.5</td><td><b>Copy credentials</b> → field officer-কে নিরাপদে দিন</td></tr>
-</table>
-<div class="warn"><b>"Could not reach the server"</b> দেখালে অ্যাকাউন্ট <span class="bad">তৈরি হয়নি</span> — backend চালু করে আবার চেষ্টা করুন। এটাই Postgres-এ সেভ নিশ্চিত করে।</div>
-
-<h2>4 · Field Officer — mother/child নিবন্ধন ও visit</h2>
-<table>
-<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
-<tr><td class="step">4.1</td><td><b>Field (app)</b> ভিউতে অংশ 3-এর credentials দিয়ে লগইন (<code>POST /api/auth/login</code>, PostgreSQL যাচাই)</td></tr>
-<tr><td class="step">4.2</td><td><b>New registration</b> → ফর্ম পূরণ → <b>Save &amp; start first ANC visit</b> → <code>POST /api/beneficiaries</code> → PostgreSQL-এ নতুন beneficiary</td></tr>
-<tr><td class="step">4.3</td><td><b>ANC visit</b>: vitals দিন → Save → <code>POST /api/beneficiaries/{id}/anc-visit</code> → সার্ভার risk classify করে beneficiary আপডেট করে</td></tr>
-<tr><td class="step">4.4</td><td><b>Child assessment</b>: MUAC/edema দিন → Save → <code>POST /api/beneficiaries/{id}/child-assessment</code> → সার্ভার SAM/MAM নির্ণয় করে আপডেট করে</td></tr>
-</table>
-
-<h2>5 · যাচাই — PostgreSQL-এ footprint</h2>
-<table>
-<tr><th style="width:40%">SQL</th><th>প্রত্যাশা</th></tr>
-<tr><td><code>SELECT username, role, name FROM users;</code></td><td>নতুন field-officer row</td></tr>
-<tr><td><code>SELECT id, name, "union" FROM workers ORDER BY id DESC;</code></td><td>নতুন worker row</td></tr>
-<tr><td><code>SELECT id, name, type, risk FROM beneficiaries ORDER BY id DESC;</code></td><td>নতুন mother/child + আপডেটেড risk</td></tr>
-</table>
-<p><span class="ok">সব টেবিলে এন্ট্রি থাকলে ✔ read+write PostgreSQL থেকে নিশ্চিত।</span></p>
-
-<h2 class="pagebreak">6 · Optimization — কেন এই ডিজাইন, ও পরবর্তী উন্নতি</h2>
-
-<div class="two">
-<div>
-<h3>যা এখন কার্যকর</h3>
-<ul>
-<li><span class="pill">SoT</span> লেখা ও পড়া দুটোই PostgreSQL-কেন্দ্রিক — একটাই সত্য উৎস।</li>
-<li><span class="pill">Cache</span> SQLite শুধু cache: অনলাইনে সার্ভার থেকে রিফ্রেশ, অফলাইনে fallback।</li>
-<li><span class="pill">Server classify</span> risk/MUAC সার্ভারে নির্ণীত — অ্যাপ ও পোর্টাল কখনো ভিন্ন ফল দেয় না।</li>
-<li><span class="pill">Consistency</span> Admin যে credential দেখেন হুবহু তা-ই DB-তে; login ব্যর্থ হয় না।</li>
-</ul>
-</div>
-<div>
-<h3>পরবর্তী optimization (roadmap)</h3>
-<ul>
-<li><b>ETag / updated_at delta sync:</b> পুরো তালিকা নয়, শুধু পরিবর্তিত রেকর্ড টানুন — ডেটা খরচ কমে।</li>
-<li><b>Durable offline write-queue:</b> অফলাইনে করা নিবন্ধন/visit payload-সহ কিউতে রেখে অনলাইনে সত্যিকারের endpoint-এ replay (শুধু ack নয়)।</li>
-<li><b>Password hashing (BCrypt) + first-login reset</b> ও JWT/session টোকেন।</li>
-<li><b>Pagination + server-side filter</b> (union/risk) বড় রেজিস্টারে দ্রুত লোড।</li>
-<li><b>Optimistic UI:</b> সার্ভার-রেসপন্সের আগে সাময়িক প্রদর্শন, ব্যর্থ হলে rollback।</li>
-<li><b>Connection retry/backoff</b> ও background sync worker।</li>
-</ul>
-</div>
-</div>
-
-<div class="banner">
-<b>Read/Write ডিজাইন নীতি:</b> "Cache-aside" প্যাটার্ন — পড়ার সময় আগে সার্ভার (miss হলে cache), লেখার সময় সার্ভারে write-through করে তারপর cache আপডেট।
-এটি single-source-of-truth রক্ষা করে, আবার গ্রামীণ কম-সংযোগ পরিবেশে (যেমন Char Bhola) অফলাইন পড়াও সচল রাখে।
-</div>
-
-<h3>পরিবর্তিত ফাইল (এই MOP-এর কোড ভিত্তি)</h3>
-<ul>
-<li><code>backend/src/main/resources/application.yml</code> — ডিফল্ট datasource → <code>preventive_healthcare</code></li>
-<li><code>mobile/lib/services/api_service.dart</code> — register + দুই visit endpoint</li>
-<li><code>mobile/lib/services/repository.dart</code> — read-through + write-through</li>
-<li><code>mobile/lib/services/local_db.dart</code> — cache bulk-replace</li>
-<li><code>mobile/lib/state/app_state.dart</code> — write wrapper</li>
-<li><code>mobile/lib/pages/RegisterPage.dart</code> — ইনপুট bind + Postgres persist</li>
-<li><code>mobile/lib/pages/AncVisitPage.dart</code>, <code>ChildHealthPage.dart</code>, <code>OnboardModal.dart</code></li>
-</ul>
-
-<h2 class="pagebreak">7 · Native PostgreSQL রান গাইড (IntelliJ + Android Studio)</h2>
-<p class="sub">লোকাল Windows-এ PostgreSQL-এর সাথে backend + Flutter অ্যাপ চালানোর সংশোধিত ধাপ।</p>
 
 <div class="warn">
-<b>প্রথমে ৩টি ভুল সংশোধন (এগুলো হুবহু অনুসরণ করলে run ব্যর্থ হবে):</b>
+<b>⚠ পুরোনো গাইডের ৩টি ভুল — এই সংস্করণে সংশোধিত:</b>
 <table style="margin-top:6px">
-<tr><th style="width:34%">প্রচলিত ভুল</th><th>সঠিক তথ্য (কোড অনুযায়ী)</th></tr>
-<tr><td>Main class <code>MchSurveillanceBackendApplication</code></td><td class="ok">সঠিক: <code>bd.gov.mch.MchApplication</code></td></tr>
-<tr><td>"CRITICAL STEP": <code>@Column</code> annotation যোগ করা</td><td class="ok">দরকার নেই — <code>Worker</code>/<code>User</code>/<code>Beneficiary</code>-তে <code>@Column</code> <b>আগে থেকেই আছে</b>। আবার যোগ করলে <span class="bad">duplicate annotation → compile error</span>।</td></tr>
-<tr><td><code>flutter pub run build_runner build …</code></td><td class="ok">চালাবেন না — প্রজেক্টে <code>build_runner</code> নেই, কমান্ডটি fail করবে।</td></tr>
+<tr><th style="width:42%">পুরোনো (ভুল) নির্দেশনা</th><th>সঠিক তথ্য (কোডবেস অনুযায়ী)</th></tr>
+<tr><td>Main class: <code>MchSurveillanceBackendApplication</code></td><td class="ok">✔ <code>bd.gov.mch.MchApplication</code></td></tr>
+<tr><td>"CRITICAL": <code>@Column</code> annotation নিজে যোগ করা</td><td class="ok">✔ দরকার নেই — annotation <b>আগে থেকেই আছে</b>; আবার দিলে duplicate → compile error</td></tr>
+<tr><td><code>flutter pub run build_runner build …</code> চালানো</td><td class="ok">✔ চালাবেন না — প্রজেক্টে code-generator নেই, কমান্ড fail করবে</td></tr>
+<tr><td>লোকাল ডাটাবেজ "Isar/Hive"</td><td class="ok">✔ আসলে <b>sqflite (SQLite)</b> — শুধুই offline cache</td></tr>
+<tr><td>Base URL ফাইল "constants.dart"</td><td class="ok">✔ আসলে <code>mobile/lib/config/api_config.dart</code></td></tr>
 </table>
 </div>
 
-<div class="banner">
-<b>Branch খেয়াল করুন:</b> PostgreSQL read/write, onboarding ও registration-এর সব ফিক্স আছে
-<code>claude/spring-boot-startup-error-d5igrb</code> ব্রাঞ্চে। আপনার ফোল্ডার যদি
-<code>…rebuild-xszyf2</code> হয়, তাহলে ঐ ব্রাঞ্চে ফিক্সগুলো নেই — চালানোর আগে সঠিক ব্রাঞ্চে যান/pull করুন:
-<code>git fetch origin && git checkout claude/spring-boot-startup-error-d5igrb &amp;&amp; git pull</code>
-</div>
+<h2>১ · সিস্টেম আর্কিটেকচার ও কম্পোনেন্ট</h2>
 
-<h3>পার্ট ১ — ডাটাবেজ ও ব্যাকএন্ড (IntelliJ IDEA)</h3>
+<p>সিস্টেমটি <b>PostgreSQL-কেন্দ্রিক (single source of truth)</b> আর্কিটেকচার অনুসরণ করে: প্রতিটি লেখা (write) সরাসরি সার্ভারে যায় ও PostgreSQL-এ স্থায়ী হয়; প্রতিটি পড়া (read) অনলাইনে সার্ভার থেকে রিফ্রেশ হয়। ডিভাইসের লোকাল SQLite শুধু <b>offline cache</b> — ইন্টারনেট না থাকলে সর্বশেষ synced ডেটা দেখায়।</p>
+
 <table>
-<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
-<tr><td class="step">1.1</td><td>pgAdmin/psql-এ ডাটাবেজ তৈরি: <code>preventive_healthcare</code>, ইউজার <code>zahra</code> (পাসওয়ার্ড <code>zahra</code>), zahra-কে DB-র <b>Owner</b> বানান (Flyway-র CREATE অধিকার লাগে)।</td></tr>
-<tr><td class="step">1.2</td><td>IntelliJ-এ <code>backend</code> খুলুন। <b>Maven Reload</b> → <b>Build ▸ Rebuild Project</b> (যাতে <code>application.yml</code> ও <code>db/migration</code> classpath-এ কপি হয়)।</td></tr>
-<tr><td class="step">1.3</td><td>Run Configuration: Main class = <code>bd.gov.mch.MchApplication</code>। কোনো extra profile/env দরকার নেই — <code>application.yml</code>-এ ডিফল্ট datasource সেট করা আছে।</td></tr>
-<tr><td class="step">1.4</td><td>সবুজ ▶ Run। লগে Flyway <code>V1__init</code> সফল ও <code>Started MchApplication</code> দেখলে backend রেডি (port 8080)।</td></tr>
+<tr><th style="width:26%">কম্পোনেন্ট</th><th style="width:22%">প্রযুক্তি</th><th>দায়িত্ব</th></tr>
+<tr><td><b>Flutter মোবাইল অ্যাপ</b><br>(Field App + Admin Portal)</td><td>Flutter 3.22+, provider, dio, sqflite</td><td>স্বাস্থ্যকর্মীর মাঠের কাজ (নিবন্ধন, ANC visit, child assessment) এবং সুপারভাইজারের পোর্টাল (dashboard, worker onboarding)। sqflite = শুধু read-cache।</td></tr>
+<tr><td><b>Spring Boot API</b><br>(Backend)</td><td>Java 21, Spring Boot 3.3.5, JPA + Flyway</td><td>সব business logic: login যাচাই, <b>RiskService</b> (ANC ঝুঁকি) ও <b>NutritionService</b> (MUAC/SAM/MAM) ক্লাসিফিকেশন, credential জেনারেশন, dashboard aggregation।</td></tr>
+<tr><td><b>PostgreSQL</b><br>(Database)</td><td>PostgreSQL (Windows-এ নেটিভ), schema Flyway-managed</td><td>সব দীর্ঘমেয়াদী ডেটা: <code>users</code>, <code>workers</code>, <code>beneficiaries</code>। Hibernate <code>ddl-auto: validate</code> — schema-র মালিক Flyway migration।</td></tr>
 </table>
-<p class="sub"><b>@Column বা entity কোড ছোঁবেন না</b> — schema ও entity ইতিমধ্যে মিলে আছে, <code>ddl-auto: validate</code> pass করবে।</p>
 
-<h3>পার্ট ২ — ফ্রন্টএন্ড (Android Studio)</h3>
+<svg class="flow" viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7a8f88"/></marker>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b5792a"/></marker>
+  </defs>
+  <rect class="node" x="15" y="25" width="150" height="64" rx="8"/>
+  <text class="ntext" x="90" y="48" text-anchor="middle" font-weight="bold">Field Officer App</text>
+  <text class="ntext" x="90" y="64" text-anchor="middle">Register · ANC · Child</text>
+  <text class="ntext" x="90" y="79" text-anchor="middle">Flutter (Android)</text>
+
+  <rect class="node" x="15" y="150" width="150" height="64" rx="8"/>
+  <text class="ntext" x="90" y="173" text-anchor="middle" font-weight="bold">Admin Portal</text>
+  <text class="ntext" x="90" y="189" text-anchor="middle">Dashboard · Workers</text>
+  <text class="ntext" x="90" y="204" text-anchor="middle">Onboard officer</text>
+
+  <rect class="node-cache" x="230" y="88" width="128" height="60" rx="8"/>
+  <text class="ntext" x="294" y="111" text-anchor="middle" font-weight="bold">SQLite cache</text>
+  <text class="ntext" x="294" y="127" text-anchor="middle">offline read only</text>
+
+  <rect class="node" x="430" y="70" width="160" height="98" rx="8"/>
+  <text class="ntext" x="510" y="92" text-anchor="middle" font-weight="bold">Spring Boot API :8080</text>
+  <text class="ntext" x="510" y="109" text-anchor="middle">/api/auth · /api/workers</text>
+  <text class="ntext" x="510" y="124" text-anchor="middle">/api/beneficiaries · /api/dashboard</text>
+  <text class="ntext" x="510" y="141" text-anchor="middle">RiskService · NutritionService</text>
+  <text class="ntext" x="510" y="157" text-anchor="middle">Flyway migration</text>
+
+  <rect class="node-db" x="645" y="86" width="100" height="66" rx="8"/>
+  <text class="ntext" x="695" y="109" text-anchor="middle" font-weight="bold">PostgreSQL</text>
+  <text class="ntext" x="695" y="125" text-anchor="middle">users · workers</text>
+  <text class="ntext" x="695" y="140" text-anchor="middle">beneficiaries</text>
+
+  <path class="edge" d="M165,50 C300,35 370,75 430,95"/>
+  <text class="elabel" x="255" y="46">write-through (POST) — সরাসরি সার্ভারে</text>
+  <path class="edge" d="M165,180 C300,190 370,160 430,140"/>
+  <text class="elabel" x="240" y="185">onboard / dashboard (REST)</text>
+  <path class="edge" d="M590,119 L645,119"/>
+  <text class="elabel" x="597" y="112">persist</text>
+  <path class="edge2" d="M430,128 C405,124 385,120 358,116"/>
+  <text class="elabel" x="366" y="140">cache refresh</text>
+  <path class="edge2" d="M230,105 C210,95 190,80 165,70"/>
+  <text class="elabel" x="172" y="94">offline read</text>
+</svg>
+
+<!-- ================= PAGE 2 : DATA FLOWS ================= -->
+<h2 class="pagebreak">২ · এন্ড-টু-এন্ড ডেটা ফ্লো</h2>
+
+<h3>ফ্লো A — Field officer অ্যাকাউন্ট তৈরি (Admin onboarding)</h3>
+<svg class="flow" viewBox="0 0 760 96" xmlns="http://www.w3.org/2000/svg">
+  <rect class="lane" x="10" y="10" width="740" height="76" rx="8"/>
+  <rect class="node" x="22" y="26" width="130" height="44" rx="7"/>
+  <text class="ntext" x="87" y="45" text-anchor="middle" font-weight="bold">Portal: Onboard form</text>
+  <text class="ntext" x="87" y="60" text-anchor="middle">নাম, NID, Union, Role</text>
+  <rect class="node" x="215" y="26" width="150" height="44" rx="7"/>
+  <text class="ntext" x="290" y="45" text-anchor="middle" font-weight="bold">POST /api/workers</text>
+  <text class="ntext" x="290" y="60" text-anchor="middle">genUsername + genPassword</text>
+  <rect class="node-db" x="428" y="26" width="140" height="44" rx="7"/>
+  <text class="ntext" x="498" y="45" text-anchor="middle" font-weight="bold">PostgreSQL</text>
+  <text class="ntext" x="498" y="60" text-anchor="middle">users + workers row</text>
+  <rect class="node" x="620" y="26" width="122" height="44" rx="7"/>
+  <text class="ntext" x="681" y="45" text-anchor="middle" font-weight="bold">Credentials প্রদর্শন</text>
+  <text class="ntext" x="681" y="60" text-anchor="middle">যেমন sahida.cb06 / Mch-K7QF</text>
+  <path class="edge" d="M152,48 L215,48"/><path class="edge" d="M365,48 L428,48"/><path class="edge" d="M568,48 L620,48"/>
+</svg>
+<p class="sub">Username/password <b>সার্ভারে</b> তৈরি হয় — admin যা দেখেন হুবহু তা-ই ডাটাবেজে থাকে, তাই লগইন কখনো mismatch হয় না। সার্ভারে না পৌঁছালে অ্যাপ স্পষ্ট এরর দেখায় — অসম্পূর্ণ "ভূতুড়ে" অ্যাকাউন্ট তৈরি হয় না।</p>
+
+<h3>ফ্লো B — নতুন মা/শিশু নিবন্ধন (Registration, write-through)</h3>
+<svg class="flow" viewBox="0 0 760 96" xmlns="http://www.w3.org/2000/svg">
+  <rect class="lane" x="10" y="10" width="740" height="76" rx="8"/>
+  <rect class="node" x="22" y="26" width="140" height="44" rx="7"/>
+  <text class="ntext" x="92" y="45" text-anchor="middle" font-weight="bold">Register form (app)</text>
+  <text class="ntext" x="92" y="60" text-anchor="middle">নাম, বয়স, গ্রাম, LMP…</text>
+  <rect class="node" x="224" y="26" width="160" height="44" rx="7"/>
+  <text class="ntext" x="304" y="45" text-anchor="middle" font-weight="bold">POST /api/beneficiaries</text>
+  <text class="ntext" x="304" y="60" text-anchor="middle">backend upsert</text>
+  <rect class="node-db" x="446" y="26" width="130" height="44" rx="7"/>
+  <text class="ntext" x="511" y="45" text-anchor="middle" font-weight="bold">PostgreSQL</text>
+  <text class="ntext" x="511" y="60" text-anchor="middle">beneficiaries row ✔</text>
+  <rect class="node-cache" x="628" y="26" width="114" height="44" rx="7"/>
+  <text class="ntext" x="685" y="45" text-anchor="middle" font-weight="bold">SQLite cache</text>
+  <text class="ntext" x="685" y="60" text-anchor="middle">stored copy সেভ</text>
+  <path class="edge" d="M162,48 L224,48"/><path class="edge" d="M384,48 L446,48"/><path class="edge2" d="M576,48 L628,48"/>
+</svg>
+
+<h3>ফ্লো C — ক্লিনিক্যাল ভিজিট ও সার্ভার-সাইড ঝুঁকি নির্ণয়</h3>
 <table>
-<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
-<tr><td class="step">2.1</td><td><code>mobile</code> খুলুন → Terminal-এ <code>flutter clean</code> তারপর <code>flutter pub get</code>। <span class="bad">build_runner চালাবেন না।</span></td></tr>
-<tr><td class="step">2.2</td><td>API URL ফাইল: <code>mobile/lib/config/api_config.dart</code> (constants.dart নয়)। <b>Emulator-এর জন্য ডিফল্ট <code>10.0.2.2:8080</code> আগেই সেট</b> — বদলানোর দরকার নেই।</td></tr>
-<tr><td class="step">2.3</td><td>আসল ফোন/Chrome হলে run-এ পাস করুন: <code>--dart-define=API_BASE_URL=http://&lt;PC-LAN-IP&gt;:8080</code> (ফোন) বা <code>http://localhost:8080</code> (Chrome web)।</td></tr>
-<tr><td class="step">2.4</td><td>Emulator চালু করে ▶ Run, অথবা Terminal-এ <code>flutter run</code>। অ্যাপ এখন Windows-এর PostgreSQL-এর সাথে সরাসরি যুক্ত।</td></tr>
+<tr><th style="width:20%">ভিজিট</th><th style="width:34%">Endpoint</th><th>সার্ভারে কী হয়</th></tr>
+<tr><td><b>ANC visit</b><br>(গর্ভবতী মা)</td><td><code>POST /api/beneficiaries/{id}/anc-visit</code></td><td><b>RiskService</b>: SBP ≥ 140 বা DBP ≥ 90, Hb (রক্তস্বল্পতা), danger signs ইত্যাদি থেকে <b>High/Medium/Low</b> নির্ণয় → beneficiary আপডেট → PostgreSQL-এ সেভ → আপডেটেড রেকর্ড অ্যাপে ফেরত।</td></tr>
+<tr><td><b>Child assessment</b><br>(শিশু)</td><td><code>POST /api/beneficiaries/{id}/child-assessment</code></td><td><b>NutritionService</b>: MUAC &lt; 11.5 cm বা edema → <b>SAM</b> (High), 11.5–12.5 → <b>MAM</b> (Medium), নাহলে Normal → PostgreSQL-এ সেভ।</td></tr>
+<tr><td><b>Live preview</b></td><td><code>POST /api/risk/anc</code>, <code>/api/nutrition/muac</code></td><td>ফর্মে টাইপ করার সাথে সাথে লাইভ ক্লাসিফিকেশন — <b>persist করে না</b>।</td></tr>
+</table>
+<div class="banner"><b>কেন সার্ভার-সাইড ক্লাসিফিকেশন?</b> অ্যাপ ও পোর্টাল একই RiskService ব্যবহার করে, তাই একটি কেসের ঝুঁকি-স্ট্যাটাস নিয়ে দুই জায়গায় কখনো ভিন্ন ফল আসে না; ক্লিনিক্যাল নিয়ম বদলাতে হলে শুধু ব্যাকএন্ড আপডেট করলেই সব ক্লায়েন্ট নতুন নিয়ম পায়।</div>
+
+<h3>ফ্লো D — পড়া (Read-through) ও অফলাইন আচরণ</h3>
+<table>
+<tr><th style="width:18%">অবস্থা</th><th>আচরণ</th></tr>
+<tr><td class="ok">অনলাইন</td><td>প্রতিটি তালিকা-লোডে অ্যাপ আগে <code>GET /api/beneficiaries</code> / <code>GET /api/workers</code> কল করে, সার্ভারের authoritative snapshot দিয়ে SQLite cache <b>পুরো রিফ্রেশ</b> করে, তারপর UI-তে দেখায়।</td></tr>
+<tr><td class="bad">অফলাইন</td><td>সার্ভার call ব্যর্থ হলে সর্বশেষ cached snapshot থেকে পড়া হয় — মাঠকর্মী তালিকা দেখতে পান। <b>লেখা (নতুন নিবন্ধন/ভিজিট) অফলাইনে ব্লক</b> — অ্যাপ বাংলা+ইংরেজি এরর দেখায়, যাতে ডাটাবেজে না-পৌঁছানো এন্ট্রি "সেভ হয়েছে" বলে ভুল ধারণা না হয়। (Roadmap: durable offline write-queue, সেকশন ৮)</td></tr>
 </table>
 
-<div class="foot">
-MCH Preventive Healthcare Platform · MOP v1.1 · এই নথি নিরাপদভাবে সংরক্ষণ করুন। Demo credentials শুধু ডেমো বিল্ডের জন্য; প্রোডাকশনে hash করা password ও token ব্যবহার করুন।
+<h3>ফ্লো E — তদারকি (Supervision)</h3>
+<p>সুপারভাইজার পোর্টাল <code>GET /api/dashboard</code> ও <code>GET /api/indicators</code> কল করে PostgreSQL-এর লাইভ ডেটা থেকে কভারেজ, ঝুঁকি-বণ্টন ও পুষ্টি পরিসংখ্যান দেখেন — field officer-দের সাম্প্রতিক এন্ট্রিগুলো সাথে সাথেই প্রতিফলিত হয়।</p>
+
+<!-- ================= PAGE 3 : MOP PART 1 ================= -->
+<h2 class="pagebreak">৩ · MOP পার্ট ১ — ডাটাবেজ ও ব্যাকএন্ড (IntelliJ IDEA)</h2>
+
+<div class="note"><b>পূর্বশর্ত:</b> Java 21, Flutter SDK (৩.২২+), PostgreSQL, IntelliJ IDEA, Android Studio ইনস্টল থাকতে হবে। এবং <b>সঠিক ব্রাঞ্চে থাকুন</b> — সব PostgreSQL ফিক্স আছে <code>claude/spring-boot-startup-error-d5igrb</code>-এ:<br>
+<code>git fetch origin &amp;&amp; git checkout claude/spring-boot-startup-error-d5igrb &amp;&amp; git pull</code></div>
+
+<h3>ধাপ ১.১ — PostgreSQL-এ ডাটাবেজ ও ইউজার তৈরি</h3>
+<p>pgAdmin অথবা psql টার্মিনালে (postgres superuser হিসেবে):</p>
+<pre><span class="c">-- ইউজার না থাকলে তৈরি করুন</span>
+CREATE USER zahra WITH PASSWORD 'zahra';
+<span class="c">-- ডাটাবেজ তৈরি করে zahra-কে Owner বানান (Flyway-র টেবিল CREATE করার অধিকার লাগে)</span>
+CREATE DATABASE preventive_healthcare OWNER zahra;</pre>
+<p class="sub">যাচাই: <code>psql -U zahra -d preventive_healthcare -h localhost</code> দিয়ে ঢোকা গেলে ✔</p>
+
+<h3>ধাপ ১.২ — প্রজেক্ট খোলা ও build রিফ্রেশ</h3>
+<table>
+<tr><th style="width:8%">#</th><th>কাজ</th></tr>
+<tr><td class="step">1</td><td>IntelliJ-এ <code>backend</code> ফোল্ডার খুলুন; Maven সব dependency নামানো পর্যন্ত অপেক্ষা করুন।</td></tr>
+<tr><td class="step">2</td><td>ডান পাশের Maven ট্যাব → <b>Reload All Maven Projects</b> (🔄)।</td></tr>
+<tr><td class="step">3</td><td><b>Build ▸ Rebuild Project</b> — এতে <code>application.yml</code> ও <code>db/migration/V1__init.sql</code> <code>target/classes</code>-এ কপি হয়। <span class="bad">এই ধাপ বাদ দিলে অ্যাপ random in-memory H2-তে চলে ও "Table BENEFICIARIES not found" এরর আসে</span> (ট্রাবলশুটিং T1)।</td></tr>
+</table>
+
+<h3>ধাপ ১.৩ — Run Configuration</h3>
+<table>
+<tr><th style="width:26%">সেটিং</th><th>মান</th></tr>
+<tr><td>Configuration type</td><td>Spring Boot (বা Application)</td></tr>
+<tr><td>Main class</td><td><code>bd.gov.mch.MchApplication</code> <span class="bad">(MchSurveillanceBackendApplication নয়!)</span></td></tr>
+<tr><td>Active profiles / Env vars</td><td><b>খালি রাখুন</b> — <code>application.yml</code>-এ PostgreSQL ডিফল্ট (<code>preventive_healthcare</code>/<code>zahra</code>) আগে থেকেই সেট। প্রয়োজনে <code>DB_URL</code>, <code>DB_USERNAME</code>, <code>DB_PASSWORD</code> env var দিয়ে override করা যায়।</td></tr>
+</table>
+<div class="note"><b>এনটিটি কোড ছোঁবেন না:</b> <code>Worker.union → union_name</code>, <code>User.role → user_role</code>, <code>Beneficiary.next → next_visit</code>, <code>day → pnc_day</code> — সব <code>@Column</code> ম্যাপিং সোর্সে <b>আগে থেকেই আছে</b> এবং <code>V1__init.sql</code>-এর সাথে হুবহু মিলে; <code>ddl-auto: validate</code> pass করবে। নতুন করে annotation দিলে duplicate-এ compile ভাঙবে।</div>
+
+<h3>ধাপ ১.৪ — Run ▶ ও সফলতার লক্ষণ</h3>
+<p>সবুজ Run বাটনে ক্লিক করুন। টার্মিনালে এই লাইনগুলো <b>ক্রমান্বয়ে</b> দেখতে পাবেন:</p>
+<pre>HikariPool-1 - Start completed.            <span class="c">← jdbc:postgresql://localhost:5432/preventive_healthcare</span>
+Successfully applied 1 migration ... V1 - init   <span class="c">← Flyway টেবিল তৈরি করল (প্রথমবার)</span>
+Started MchApplication in X.X seconds      <span class="c">← সার্ভার রেডি, port 8080</span></pre>
+<div class="warn">লগে <code>jdbc:h2:mem:…</code> দেখলে বুঝবেন কনফিগ classpath-এ যায়নি — ধাপ ১.২(৩) আবার করুন। আর যদি Flyway এরর বা validate-fail আসে, ট্রাবলশুটিং টেবিল (সেকশন ৭) দেখুন।</div>
+
+<!-- ================= PAGE 4 : MOP PART 2 + USAGE ================= -->
+<h2 class="pagebreak">৪ · MOP পার্ট ২ — ফ্রন্টএন্ড (Android Studio)</h2>
+
+<h3>ধাপ ২.১ — প্রজেক্ট রেডি করা</h3>
+<pre>flutter clean
+flutter pub get</pre>
+<p class="sub"><span class="bad">⛔ <code>flutter pub run build_runner build …</code> চালাবেন না</span> — এই প্রজেক্টে কোনো code generator (freezed/json_serializable/Isar) নেই; কমান্ডটি "build_runner not found" এররে fail করবে। মডেলগুলো হাতে লেখা।</p>
+
+<h3>ধাপ ২.২ — API Base URL</h3>
+<table>
+<tr><th style="width:30%">টার্গেট</th><th>Base URL</th><th style="width:34%">কীভাবে সেট করবেন</th></tr>
+<tr><td><b>Android Emulator</b></td><td><code>http://10.0.2.2:8080</code></td><td class="ok">কিছুই করতে হবে না — এটাই ডিফল্ট (<code>mobile/lib/config/api_config.dart</code>)</td></tr>
+<tr><td><b>আসল ফোন (USB, একই WiFi)</b></td><td><code>http://&lt;PC-LAN-IP&gt;:8080</code></td><td>Run args-এ: <code>--dart-define=API_BASE_URL=http://192.168.0.10:8080</code> (IP জানতে <code>ipconfig</code>)</td></tr>
+<tr><td><b>Chrome (web)</b></td><td><code>http://localhost:8080</code></td><td><code>flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8080</code></td></tr>
+</table>
+<p class="sub">ফাইল এডিট না করে <code>--dart-define</code> ব্যবহার করাই ভালো — কোড অপরিবর্তিত থাকে। (ফাইলের নাম <code>api_config.dart</code>; পুরোনো গাইডের "constants.dart" নামে কোনো ফাইল নেই।)</p>
+
+<h3>ধাপ ২.৩ — অ্যাপ চালু</h3>
+<table>
+<tr><th style="width:8%">#</th><th>কাজ</th></tr>
+<tr><td class="step">1</td><td>Device Manager থেকে emulator চালু করুন (অথবা ফোন কানেক্ট করুন)।</td></tr>
+<tr><td class="step">2</td><td>Device dropdown-এ টার্গেট সিলেক্ট → সবুজ Run ▶ (অথবা টার্মিনালে <code>flutter run</code>)।</td></tr>
+<tr><td class="step">3</td><td>অ্যাপ চালু হলে এটি সরাসরি আপনার Windows-এর PostgreSQL-ব্যাকড API-র সাথে যুক্ত।</td></tr>
+</table>
+
+<h2>৫ · ব্যবহার-ফ্লো: Admin ও Field Officer</h2>
+
+<h3>৫.১ — Admin: field officer onboard</h3>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th><th style="width:32%">নেপথ্যে</th></tr>
+<tr><td class="step">A1</td><td><b>Portal</b> ভিউ → লগইন <code>s.rahman</code> / <code>Admin-2026</code></td><td><code>POST /api/auth/login</code> → users টেবিল যাচাই</td></tr>
+<tr><td class="step">A2</td><td>Sidebar ▸ <b>Workers</b> ▸ <b>Onboard field officer</b> — নাম, বয়স, মোবাইল, NID, Union, Role দিন</td><td>—</td></tr>
+<tr><td class="step">A3</td><td><b>Create account &amp; generate login</b> চাপুন</td><td><code>POST /api/workers</code> → PostgreSQL-এ User+Worker</td></tr>
+<tr><td class="step">A4</td><td>প্রদর্শিত <b>username/password</b> Copy করে officer-কে নিরাপদে দিন</td><td>Credentials সার্ভার-জেনারেটেড — DB-র সাথে হুবহু মিল</td></tr>
+</table>
+
+<h3>৫.২ — Field officer: দৈনন্দিন কাজ</h3>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th><th style="width:32%">নেপথ্যে</th></tr>
+<tr><td class="step">F1</td><td><b>Field</b> ভিউতে A4-এর credentials দিয়ে লগইন</td><td><code>POST /api/auth/login</code></td></tr>
+<tr><td class="step">F2</td><td><b>New registration</b> — ফর্ম পূরণ → <b>Save &amp; start first ANC visit</b></td><td><code>POST /api/beneficiaries</code> → Postgres row</td></tr>
+<tr><td class="step">F3</td><td>ANC ভিজিটে vitals (BP, Hb, danger signs) দিয়ে Save</td><td>সার্ভার risk classify → Postgres update</td></tr>
+<tr><td class="step">F4</td><td>শিশুর ক্ষেত্রে MUAC/edema দিয়ে assessment Save</td><td>সার্ভার SAM/MAM নির্ণয় → Postgres update</td></tr>
+</table>
+<p class="sub">ডেমো field অ্যাকাউন্ট: <code>rokeya.cb01</code> / <code>Mch-2026</code></p>
+
+<!-- ================= PAGE 5 : VERIFY + TROUBLESHOOT ================= -->
+<h2 class="pagebreak">৬ · যাচাইকরণ — PostgreSQL footprint ও API smoke test</h2>
+
+<h3>৬.১ — SQL যাচাই (psql বা IntelliJ Database টুল)</h3>
+<pre><span class="c">-- লগইন অ্যাকাউন্টসমূহ (নতুন officer-এর row থাকবে, role='field-officer')</span>
+SELECT username, user_role, name FROM users ORDER BY username;
+
+<span class="c">-- মাঠকর্মী রেজিস্টার (নতুন onboard হওয়া worker সবার ওপরে)</span>
+SELECT id, name, role, union_name FROM workers ORDER BY id DESC;
+
+<span class="c">-- মা/শিশু রেজিস্টার + সর্বশেষ ঝুঁকি-স্ট্যাটাস</span>
+SELECT id, name, type, risk, reason, muac FROM beneficiaries ORDER BY id DESC;</pre>
+
+<h3>৬.২ — API smoke test (PowerShell/curl, backend চালু অবস্থায়)</h3>
+<pre><span class="c"># তালিকা আসছে কিনা</span>
+curl http://localhost:8080/api/beneficiaries
+curl http://localhost:8080/api/workers
+
+<span class="c"># লগইন যাচাই (200 = সফল, 401 = ভুল credentials)</span>
+curl -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" ^
+     -d "{\"username\":\"s.rahman\",\"password\":\"Admin-2026\"}"</pre>
+<p class="sub">তিনটি টেবিলেই এন্ট্রি + API ২০০ রেসপন্স = <span class="ok">read ও write দুটোই PostgreSQL থেকে নিশ্চিত ✔</span></p>
+
+<h2>৭ · ট্রাবলশুটিং — সাধারণ এরর ও সমাধান</h2>
+<table>
+<tr><th style="width:6%">#</th><th style="width:38%">লক্ষণ (লগ/এরর)</th><th>কারণ ও সমাধান</th></tr>
+<tr><td class="step">T1</td><td><code>Table "BENEFICIARIES" not found</code> + লগে <code>jdbc:h2:mem:…</code></td><td><code>target/classes</code>-এ <code>application.yml</code>/<code>db/migration</code> কপি হয়নি → <b>Maven Reload + Build ▸ Rebuild Project</b>, তারপর <code>target\classes\application.yml</code> আছে কিনা দেখুন।</td></tr>
+<tr><td class="step">T2</td><td><code>Connection refused</code> / <code>password authentication failed</code></td><td>PostgreSQL সার্ভিস বন্ধ (services.msc-তে চালু করুন) বা ইউজার/পাসওয়ার্ড ভুল → ধাপ ১.১-এর SQL আবার চালান।</td></tr>
+<tr><td class="step">T3</td><td><code>Schema-validation: missing table/column</code></td><td>DB-তে পুরনো/অসম্পূর্ণ schema → খালি ডাটাবেজ নিয়ে আবার চালান (Flyway নিজে টেবিল বানাবে): <code>DROP DATABASE preventive_healthcare; CREATE DATABASE preventive_healthcare OWNER zahra;</code></td></tr>
+<tr><td class="step">T4</td><td><code>Cannot find main class MchSurveillanceBackendApplication</code></td><td>ভুল ক্লাসনাম — Run Config-এ <code>bd.gov.mch.MchApplication</code> দিন।</td></tr>
+<tr><td class="step">T5</td><td>অ্যাপে "Could not reach the server / সার্ভারে সংরক্ষণ ব্যর্থ"</td><td>Backend বন্ধ, বা ভুল Base URL। Emulator-এ <code>10.0.2.2:8080</code>; আসল ফোনে PC-র LAN IP + একই WiFi + Windows Firewall-এ port 8080 allow।</td></tr>
+<tr><td class="step">T6</td><td><code>flutter pub run build_runner …</code> → "not found"</td><td>স্বাভাবিক — প্রজেক্টে build_runner নেই; কমান্ডটি বাদ দিন।</td></tr>
+<tr><td class="step">T7</td><td>Portal-এ পুরনো/ডেমো ডেটা দেখাচ্ছে, নতুন এন্ট্রি নেই</td><td>অ্যাপ অফলাইনে cache থেকে পড়ছে → নেটওয়ার্ক/Backend ঠিক করে তালিকা রিফ্রেশ করুন; অনলাইনে প্রতিটি লোড সার্ভার থেকে আসে।</td></tr>
+<tr><td class="step">T8</td><td>Flyway: <code>Migration checksum mismatch</code></td><td><code>V1__init.sql</code> এডিট করা হয়েছে → এডিট undo করুন; schema বদলাতে হলে নতুন <code>V2__*.sql</code> লিখুন (পুরনো migration কখনো এডিট নয়)।</td></tr>
+</table>
+
+<!-- ================= PAGE 6 : ROADMAP ================= -->
+<h2 class="pagebreak">৮ · Optimization Roadmap ও নিরাপত্তা নোট</h2>
+
+<h3>৮.১ — এখনকার ডিজাইনে যা নিশ্চিত</h3>
+<ul>
+<li><span class="pill">SoT</span> সব read/write PostgreSQL-কেন্দ্রিক — এক সত্য উৎস, রিপোর্টিং সবসময় সঠিক।</li>
+<li><span class="pill">Consistency</span> Credentials ও ঝুঁকি-স্ট্যাটাস সার্ভার-জেনারেটেড — অ্যাপ/পোর্টাল/DB কখনো অমিল হয় না।</li>
+<li><span class="pill">Safety</span> সার্ভারে না-পৌঁছানো লেখা ব্যর্থ হিসেবে স্পষ্ট দেখানো হয় — নীরব ডেটা-হারানো নেই।</li>
+<li><span class="pill">Offline read</span> সংযোগ গেলেও মাঠকর্মী সর্বশেষ synced তালিকা দেখতে পান।</li>
+</ul>
+
+<h3>৮.২ — পরবর্তী optimization (অগ্রাধিকারক্রমে)</h3>
+<table>
+<tr><th style="width:6%">#</th><th style="width:30%">উন্নতি</th><th>বিবরণ ও লাভ</th></tr>
+<tr><td class="step">1</td><td><b>Durable offline write-queue</b></td><td>অফলাইনে নিবন্ধন/ভিজিট full payload-সহ লোকাল কিউতে রাখা, অনলাইন হলে আসল endpoint-এ replay (বর্তমান <code>/api/sync</code> শুধু ack করে)। প্রত্যন্ত অঞ্চলে অফলাইন লেখাও সম্ভব হবে।</td></tr>
+<tr><td class="step">2</td><td><b>Password hashing + টোকেন</b></td><td>BCrypt hash, প্রথম লগইনে বাধ্যতামূলক password বদল, JWT session। প্রোডাকশনের পূর্বশর্ত।</td></tr>
+<tr><td class="step">3</td><td><b>Delta sync</b></td><td><code>updated_at</code>/ETag ভিত্তিক — পুরো তালিকার বদলে শুধু পরিবর্তিত রেকর্ড টানা; মোবাইল ডেটা ও লোড-টাইম কমে।</td></tr>
+<tr><td class="step">4</td><td><b>Pagination + server-side filter</b></td><td>Union/ঝুঁকি অনুযায়ী সার্ভারে ফিল্টার — হাজারো beneficiary-তেও পোর্টাল দ্রুত।</td></tr>
+<tr><td class="step">5</td><td><b>Optimistic UI + retry/backoff</b></td><td>রেসপন্সের আগেই সাময়িক প্রদর্শন, ব্যর্থে rollback; নেটওয়ার্ক flaky হলে স্বয়ংক্রিয় পুনঃচেষ্টা।</td></tr>
+<tr><td class="step">6</td><td><b>Background sync worker</b></td><td>অ্যাপ বন্ধ থাকলেও নির্দিষ্ট বিরতিতে কিউ flush (WorkManager)।</td></tr>
+</table>
+
+<h3>৮.৩ — নিরাপত্তা নোট</h3>
+<div class="warn">
+<ul style="margin:0">
+<li>ডেমো credentials (<code>s.rahman/Admin-2026</code> ইত্যাদি) ও plain-text password <b>শুধু ডেমো বিল্ডের জন্য</b> — প্রোডাকশনে hash + টোকেন বাধ্যতামূলক।</li>
+<li><code>application.yml</code>-এর DB পাসওয়ার্ড লোকাল dev-এর জন্য; আসল সার্ভারে <code>DB_PASSWORD</code> env var ব্যবহার করুন।</li>
+<li>CORS বর্তমানে <code>*</code> — প্রোডাকশনে নির্দিষ্ট origin-এ সীমিত করুন (<code>mch.cors.allowed-origins</code>)।</li>
+</ul>
 </div>
+
+<h3>৮.৪ — সংশ্লিষ্ট ফাইল-ম্যাপ (রেফারেন্স)</h3>
+<table>
+<tr><th style="width:46%">ফাইল</th><th>ভূমিকা</th></tr>
+<tr><td><code>backend/src/main/resources/application.yml</code></td><td>Datasource (PostgreSQL ডিফল্ট), Flyway, H2 ডেমো প্রোফাইল</td></tr>
+<tr><td><code>backend/.../db/migration/V1__init.sql</code></td><td>Schema-র মালিক — users/workers/beneficiaries</td></tr>
+<tr><td><code>backend/.../web/*Controller.java</code></td><td>Auth, Workers (onboard), Beneficiaries, Visits, Dashboard, Sync</td></tr>
+<tr><td><code>backend/.../service/RiskService, NutritionService</code></td><td>ক্লিনিক্যাল ক্লাসিফিকেশন (server-side)</td></tr>
+<tr><td><code>mobile/lib/config/api_config.dart</code></td><td>Base URL (ডিফল্ট <code>10.0.2.2:8080</code>, <code>--dart-define</code> override)</td></tr>
+<tr><td><code>mobile/lib/services/api_service.dart</code></td><td>সব REST call (dio)</td></tr>
+<tr><td><code>mobile/lib/services/repository.dart</code></td><td>Read-through + write-through অর্কেস্ট্রেশন</td></tr>
+<tr><td><code>mobile/lib/services/local_db.dart</code></td><td>SQLite cache (sqflite)</td></tr>
+<tr><td><code>mobile/lib/pages/RegisterPage, AncVisitPage, ChildHealthPage, OnboardModal</code></td><td>UI ফর্ম → সার্ভারে persist</td></tr>
+</table>
+
+<p class="meta" style="margin-top:14px">MOP &amp; System Architecture Guide v2.0 · Preventive Healthcare Programme — MCH Surveillance · এই নথি নিরাপদে সংরক্ষণ করুন।</p>
 
 </body>
 </html>
