@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans Bengali", "Segoe UI", system-ui, sans-serif;
+    color: #23201a; font-size: 12px; line-height: 1.55; margin: 0;
+  }
+  h1 { font-size: 22px; color: #1f5e4d; margin: 0 0 2px; }
+  h2 { font-size: 15px; color: #1f5e4d; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #d8e6e0; }
+  h3 { font-size: 12.5px; margin: 14px 0 5px; color: #2b6b58; }
+  .sub { color: #6b675e; font-size: 11.5px; margin: 0 0 4px; }
+  .meta { color: #8a857b; font-size: 10.5px; margin-bottom: 6px; }
+  code { background: #eef3f1; padding: 1px 5px; border-radius: 4px; font-family: "Consolas", monospace; font-size: 10.5px; color: #124; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0; }
+  th, td { border: 1px solid #d8d4ca; padding: 6px 9px; text-align: left; vertical-align: top; }
+  th { background: #1f5e4d; color: #fff; font-weight: 600; font-size: 11px; }
+  tr:nth-child(even) td { background: #f6f4ef; }
+  .step { color: #1f5e4d; font-weight: 700; }
+  .banner { background: #eef6f3; border-left: 4px solid #1f5e4d; padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
+  .warn { background: #fbeee9; border-left: 4px solid #c0492e; padding: 8px 12px; border-radius: 4px; margin: 8px 0; }
+  .ok { color: #1f7a56; font-weight: 700; }
+  .bad { color: #c0492e; font-weight: 700; }
+  .flow { width: 100%; margin: 6px 0; }
+  .node { fill: #ffffff; stroke: #1f5e4d; stroke-width: 1.5; }
+  .node-db { fill: #eaf3ef; stroke: #1f5e4d; stroke-width: 2; }
+  .node-cache { fill: #fdf6e9; stroke: #b5792a; stroke-width: 1.5; }
+  .ntext { font-size: 10px; fill: #23201a; font-family: "Segoe UI", sans-serif; }
+  .ntext b { font-weight: 700; }
+  .edge { stroke: #7a8f88; stroke-width: 1.4; fill: none; marker-end: url(#arrow); }
+  .elabel { font-size: 8.5px; fill: #5c594f; font-family: "Segoe UI", sans-serif; }
+  .pill { display:inline-block; background:#1f5e4d; color:#fff; border-radius:10px; padding:1px 8px; font-size:10px; margin-right:4px; }
+  .foot { margin-top: 18px; padding-top: 8px; border-top: 1px solid #ddd; color: #8a857b; font-size: 10px; }
+  ul { margin: 4px 0 4px 0; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .two { display: flex; gap: 14px; }
+  .two > div { flex: 1; }
+  .pagebreak { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<h1>MOP — MCH Preventive Healthcare Platform</h1>
+<p class="sub">Field-officer অ্যাকাউন্ট তৈরি, mother/child নিবন্ধন ও clinical visit — সবই PostgreSQL-এ (single source of truth), SQLite শুধু offline cache</p>
+<p class="meta">Method of Procedure · সংস্করণ 1.0 · তারিখ 06 Jul 2026 · ব্রাঞ্চ <code>claude/spring-boot-startup-error-d5igrb</code></p>
+
+<div class="banner">
+<b>স্থাপত্য (Architecture) সংক্ষেপে:</b> Backend (Spring Boot) = লেখা ও পড়ার একমাত্র কর্তৃত্ব (system of record) → <b>PostgreSQL</b>।
+মোবাইল অ্যাপের লোকাল <b>SQLite</b> শুধু <b>cache</b> — অনলাইনে সার্ভার থেকে রিফ্রেশ হয়, অফলাইনে পড়ার জন্য fallback দেয়।
+Risk/nutrition শ্রেণিবিন্যাস (classification) সার্ভারে হয়, তাই অ্যাপ ও পোর্টাল সবসময় একমত।
+</div>
+
+<h2>1 · সিস্টেম ডেটা-ফ্লো (Read-through + Write-through)</h2>
+
+<svg class="flow" viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7a8f88"/>
+    </marker>
+  </defs>
+
+  <!-- Field App -->
+  <rect class="node" x="20" y="30" width="150" height="70" rx="8"/>
+  <text class="ntext" x="95" y="55" text-anchor="middle"><b>Field Officer App</b></text>
+  <text class="ntext" x="95" y="72" text-anchor="middle">Flutter (Android)</text>
+  <text class="ntext" x="95" y="88" text-anchor="middle">Register / Visit</text>
+
+  <!-- Admin Portal -->
+  <rect class="node" x="20" y="180" width="150" height="70" rx="8"/>
+  <text class="ntext" x="95" y="205" text-anchor="middle"><b>Admin Portal</b></text>
+  <text class="ntext" x="95" y="222" text-anchor="middle">Supervisor view</text>
+  <text class="ntext" x="95" y="238" text-anchor="middle">Onboard officer</text>
+
+  <!-- Local cache -->
+  <rect class="node-cache" x="235" y="105" width="130" height="66" rx="8"/>
+  <text class="ntext" x="300" y="130" text-anchor="middle"><b>SQLite cache</b></text>
+  <text class="ntext" x="300" y="146" text-anchor="middle">offline read</text>
+  <text class="ntext" x="300" y="162" text-anchor="middle">fallback only</text>
+
+  <!-- Backend -->
+  <rect class="node" x="435" y="95" width="150" height="86" rx="8"/>
+  <text class="ntext" x="510" y="120" text-anchor="middle"><b>Spring Boot API</b></text>
+  <text class="ntext" x="510" y="137" text-anchor="middle">/api/beneficiaries</text>
+  <text class="ntext" x="510" y="152" text-anchor="middle">/api/workers</text>
+  <text class="ntext" x="510" y="167" text-anchor="middle">Risk / MUAC classify</text>
+
+  <!-- Postgres -->
+  <rect class="node-db" x="640" y="100" width="100" height="76" rx="8"/>
+  <text class="ntext" x="690" y="128" text-anchor="middle"><b>PostgreSQL</b></text>
+  <text class="ntext" x="690" y="145" text-anchor="middle">users</text>
+  <text class="ntext" x="690" y="160" text-anchor="middle">beneficiaries</text>
+
+  <!-- edges app -> backend (write) -->
+  <path class="edge" d="M170,58 C300,45 360,90 435,115"/>
+  <text class="elabel" x="300" y="52">① write (POST) — Postgres authoritative</text>
+
+  <!-- backend -> postgres -->
+  <path class="edge" d="M585,138 L640,138"/>
+  <text class="elabel" x="590" y="130">② persist</text>
+
+  <!-- backend -> cache (refresh) -->
+  <path class="edge" d="M435,150 C400,150 380,140 365,138"/>
+  <text class="elabel" x="372" y="185">③ refresh cache</text>
+
+  <!-- cache -> app (read) -->
+  <path class="edge" d="M235,130 C210,120 195,95 170,80"/>
+  <text class="elabel" x="150" y="112">④ read</text>
+
+  <!-- portal -> backend -->
+  <path class="edge" d="M170,212 C320,210 360,175 435,160"/>
+  <text class="elabel" x="300" y="205">onboard (POST /api/workers)</text>
+</svg>
+
+<table>
+<tr><th style="width:22%">পর্যায়</th><th>কী ঘটে</th></tr>
+<tr><td class="step">① Write</td><td>অ্যাপ/পোর্টাল সরাসরি backend-এ POST করে (নিবন্ধন, visit, onboard)। PostgreSQL-ই কর্তৃত্ব।</td></tr>
+<tr><td class="step">② Persist</td><td>Backend রেকর্ড PostgreSQL-এ সেভ করে এবং risk/MUAC সার্ভার-সাইডে শ্রেণিবিন্যাস করে।</td></tr>
+<tr><td class="step">③ Refresh cache</td><td>সার্ভারের authoritative রেকর্ড দিয়ে লোকাল SQLite cache আপডেট হয়।</td></tr>
+<tr><td class="step">④ Read</td><td>UI cache থেকে পড়ে; অনলাইনে প্রতিটি লোড আগে backend থেকে রিফ্রেশ হয়, অফলাইনে cache fallback।</td></tr>
+</table>
+
+<h2>2 · প্রস্তুতি (একবার সেটআপ)</h2>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th><th style="width:26%">যাচাই</th></tr>
+<tr><td class="step">0.1</td><td>PostgreSQL চালু; DB <code>preventive_healthcare</code>, user <code>zahra</code>/<code>zahra</code></td><td><code>psql</code> দিয়ে ঢোকা যায়</td></tr>
+<tr><td class="step">0.2</td><td>IntelliJ-এ backend <b>Run</b> (Rebuild করে নিন যাতে <code>application.yml</code> ও <code>db/migration</code> classpath-এ যায়)</td><td>লগে <code>jdbc:postgresql://…/preventive_healthcare</code> ও Flyway <code>V1__init</code>, port 8080</td></tr>
+<tr><td class="step">0.3</td><td>Android Studio-তে <code>mobile</code> খুলুন → <code>flutter pub get</code> → emulator-এ Run</td><td>ডিফল্ট URL <code>10.0.2.2:8080</code> backend-এ পৌঁছায়</td></tr>
+</table>
+<p class="sub">আসল ফোন (USB) হলে: <code>--dart-define=API_BASE_URL=http://&lt;PC-LAN-IP&gt;:8080</code> (একই WiFi)।</p>
+
+<h2>3 · Admin — field officer অ্যাকাউন্ট তৈরি</h2>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
+<tr><td class="step">3.1</td><td>অ্যাপে <b>Portal/Supervisor</b> ভিউ → লগইন <code>s.rahman</code> / <code>Admin-2026</code></td></tr>
+<tr><td class="step">3.2</td><td>সাইডবার → <b>Workers</b> → <b>Onboard field officer</b></td></tr>
+<tr><td class="step">3.3</td><td>নাম, বয়স, মোবাইল, NID, Union, Role পূরণ → <b>Create account &amp; generate login</b></td></tr>
+<tr><td class="step">3.4</td><td>Backend <code>POST /api/workers</code> → PostgreSQL-এ <b>User + Worker</b> সেভ → আসল username/password ফেরত ও স্ক্রিনে প্রদর্শন</td></tr>
+<tr><td class="step">3.5</td><td><b>Copy credentials</b> → field officer-কে নিরাপদে দিন</td></tr>
+</table>
+<div class="warn"><b>"Could not reach the server"</b> দেখালে অ্যাকাউন্ট <span class="bad">তৈরি হয়নি</span> — backend চালু করে আবার চেষ্টা করুন। এটাই Postgres-এ সেভ নিশ্চিত করে।</div>
+
+<h2>4 · Field Officer — mother/child নিবন্ধন ও visit</h2>
+<table>
+<tr><th style="width:8%">ধাপ</th><th>কাজ</th></tr>
+<tr><td class="step">4.1</td><td><b>Field (app)</b> ভিউতে অংশ 3-এর credentials দিয়ে লগইন (<code>POST /api/auth/login</code>, PostgreSQL যাচাই)</td></tr>
+<tr><td class="step">4.2</td><td><b>New registration</b> → ফর্ম পূরণ → <b>Save &amp; start first ANC visit</b> → <code>POST /api/beneficiaries</code> → PostgreSQL-এ নতুন beneficiary</td></tr>
+<tr><td class="step">4.3</td><td><b>ANC visit</b>: vitals দিন → Save → <code>POST /api/beneficiaries/{id}/anc-visit</code> → সার্ভার risk classify করে beneficiary আপডেট করে</td></tr>
+<tr><td class="step">4.4</td><td><b>Child assessment</b>: MUAC/edema দিন → Save → <code>POST /api/beneficiaries/{id}/child-assessment</code> → সার্ভার SAM/MAM নির্ণয় করে আপডেট করে</td></tr>
+</table>
+
+<h2>5 · যাচাই — PostgreSQL-এ footprint</h2>
+<table>
+<tr><th style="width:40%">SQL</th><th>প্রত্যাশা</th></tr>
+<tr><td><code>SELECT username, role, name FROM users;</code></td><td>নতুন field-officer row</td></tr>
+<tr><td><code>SELECT id, name, "union" FROM workers ORDER BY id DESC;</code></td><td>নতুন worker row</td></tr>
+<tr><td><code>SELECT id, name, type, risk FROM beneficiaries ORDER BY id DESC;</code></td><td>নতুন mother/child + আপডেটেড risk</td></tr>
+</table>
+<p><span class="ok">সব টেবিলে এন্ট্রি থাকলে ✔ read+write PostgreSQL থেকে নিশ্চিত।</span></p>
+
+<h2 class="pagebreak">6 · Optimization — কেন এই ডিজাইন, ও পরবর্তী উন্নতি</h2>
+
+<div class="two">
+<div>
+<h3>যা এখন কার্যকর</h3>
+<ul>
+<li><span class="pill">SoT</span> লেখা ও পড়া দুটোই PostgreSQL-কেন্দ্রিক — একটাই সত্য উৎস।</li>
+<li><span class="pill">Cache</span> SQLite শুধু cache: অনলাইনে সার্ভার থেকে রিফ্রেশ, অফলাইনে fallback।</li>
+<li><span class="pill">Server classify</span> risk/MUAC সার্ভারে নির্ণীত — অ্যাপ ও পোর্টাল কখনো ভিন্ন ফল দেয় না।</li>
+<li><span class="pill">Consistency</span> Admin যে credential দেখেন হুবহু তা-ই DB-তে; login ব্যর্থ হয় না।</li>
+</ul>
+</div>
+<div>
+<h3>পরবর্তী optimization (roadmap)</h3>
+<ul>
+<li><b>ETag / updated_at delta sync:</b> পুরো তালিকা নয়, শুধু পরিবর্তিত রেকর্ড টানুন — ডেটা খরচ কমে।</li>
+<li><b>Durable offline write-queue:</b> অফলাইনে করা নিবন্ধন/visit payload-সহ কিউতে রেখে অনলাইনে সত্যিকারের endpoint-এ replay (শুধু ack নয়)।</li>
+<li><b>Password hashing (BCrypt) + first-login reset</b> ও JWT/session টোকেন।</li>
+<li><b>Pagination + server-side filter</b> (union/risk) বড় রেজিস্টারে দ্রুত লোড।</li>
+<li><b>Optimistic UI:</b> সার্ভার-রেসপন্সের আগে সাময়িক প্রদর্শন, ব্যর্থ হলে rollback।</li>
+<li><b>Connection retry/backoff</b> ও background sync worker।</li>
+</ul>
+</div>
+</div>
+
+<div class="banner">
+<b>Read/Write ডিজাইন নীতি:</b> "Cache-aside" প্যাটার্ন — পড়ার সময় আগে সার্ভার (miss হলে cache), লেখার সময় সার্ভারে write-through করে তারপর cache আপডেট।
+এটি single-source-of-truth রক্ষা করে, আবার গ্রামীণ কম-সংযোগ পরিবেশে (যেমন Char Bhola) অফলাইন পড়াও সচল রাখে।
+</div>
+
+<h3>পরিবর্তিত ফাইল (এই MOP-এর কোড ভিত্তি)</h3>
+<ul>
+<li><code>backend/src/main/resources/application.yml</code> — ডিফল্ট datasource → <code>preventive_healthcare</code></li>
+<li><code>mobile/lib/services/api_service.dart</code> — register + দুই visit endpoint</li>
+<li><code>mobile/lib/services/repository.dart</code> — read-through + write-through</li>
+<li><code>mobile/lib/services/local_db.dart</code> — cache bulk-replace</li>
+<li><code>mobile/lib/state/app_state.dart</code> — write wrapper</li>
+<li><code>mobile/lib/pages/RegisterPage.dart</code> — ইনপুট bind + Postgres persist</li>
+<li><code>mobile/lib/pages/AncVisitPage.dart</code>, <code>ChildHealthPage.dart</code>, <code>OnboardModal.dart</code></li>
+</ul>
+
+<div class="foot">
+MCH Preventive Healthcare Platform · MOP v1.0 · এই নথি নিরাপদভাবে সংরক্ষণ করুন। Demo credentials শুধু ডেমো বিল্ডের জন্য; প্রোডাকশনে hash করা password ও token ব্যবহার করুন।
+</div>
+
+</body>
+</html>
