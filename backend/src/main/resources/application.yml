@@ -5,9 +5,9 @@ spring:
   # Default: PostgreSQL (long-term persistent store).
   # Override per environment with env vars: DB_URL, DB_USERNAME, DB_PASSWORD.
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/mch}
-    username: ${DB_USERNAME:mch}
-    password: ${DB_PASSWORD:mch}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/preventive_healthcare}
+    username: ${DB_USERNAME:zahra}
+    password: ${DB_PASSWORD:zahra}
     driver-class-name: org.postgresql.Driver
   # Schema is owned by Flyway migrations (src/main/resources/db/migration);
   # Hibernate only validates that the entities match.
