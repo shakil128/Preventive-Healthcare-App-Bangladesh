@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
-import '../domain/format.dart';
 import '../domain/models.dart';
 import '../domain/seed.dart';
 import '../state/app_state.dart';
@@ -27,6 +26,8 @@ class _OnboardModalState extends State<OnboardModal> {
   bool _hasLoc = false;
 
   bool _done = false;
+  bool _saving = false;
+  String? _error;
   String _username = '';
   String _password = '';
   bool _copied = false;
@@ -47,27 +48,40 @@ class _OnboardModalState extends State<OnboardModal> {
   }
 
   Future<void> _generate() async {
-    if (!_valid) return;
-    final state = context.read<AppState>();
-    final username = genUsername(_name.text, _union, state.workers.length + 1);
-    final password = genPassword();
-    await state.addWorker(Worker(
-      id: 'w${DateTime.now().millisecondsSinceEpoch}',
-      name: _name.text.trim(),
-      role: _role,
-      union: _union,
-      assigned: 0,
-      high: 0,
-      visits: 0,
-      cov: 0,
-      lastSync: 'Never',
-      status: OnlineStatus.offline,
-    ));
+    if (!_valid || _saving) return;
     setState(() {
-      _username = username;
-      _password = password;
-      _done = true;
+      _saving = true;
+      _error = null;
     });
+    final state = context.read<AppState>();
+    try {
+      // The backend creates the account in PostgreSQL and returns the exact
+      // credentials the officer signs in with — so the admin never sees a
+      // password that differs from what is stored.
+      final result = await state.onboardWorker(
+        name: _name.text.trim(),
+        age: int.tryParse(_age.text.trim()) ?? 0,
+        phone: _phone.text.trim(),
+        nid: _nid.text.trim(),
+        union: _union,
+        role: _role,
+      );
+      if (!mounted) return;
+      setState(() {
+        _username = result.username;
+        _password = result.password;
+        _done = true;
+        _saving = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _error =
+            'Could not reach the server. The account must be created online so '
+            'the officer can sign in — check the backend and try again.';
+      });
+    }
   }
 
   @override
@@ -173,7 +187,7 @@ class _OnboardModalState extends State<OnboardModal> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _valid ? _generate : null,
+                onPressed: (_valid && !_saving) ? _generate : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: T.brand,
                   disabledBackgroundColor: const Color(0xFF9DB8AF),
@@ -182,16 +196,27 @@ class _OnboardModalState extends State<OnboardModal> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
                   textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
-                child: const Text('Create account & generate login →'),
+                child: _saving
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Create account & generate login →'),
               ),
             ),
             const SizedBox(height: 9),
             Center(
               child: Text(
-                _valid
-                    ? 'Username & password generated automatically'
-                    : 'Fill name, age, NID and phone to continue',
-                style: const TextStyle(fontSize: 11.5, color: T.textMuted),
+                _error ??
+                    (_valid
+                        ? 'Username & password generated automatically'
+                        : 'Fill name, age, NID and phone to continue'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: 11.5,
+                    color: _error != null ? T.riskHigh : T.textMuted),
               ),
             ),
           ],

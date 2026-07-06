@@ -152,6 +152,22 @@ class AppState extends ChangeNotifier {
     await refresh();
   }
 
+  /// Onboard a field officer via the backend: persists the account in
+  /// PostgreSQL and returns the credentials the officer uses to sign in.
+  Future<({Worker worker, String username, String password})> onboardWorker({
+    required String name,
+    required int age,
+    required String phone,
+    required String nid,
+    required String union,
+    required WorkerRole role,
+  }) async {
+    final result = await repo.onboardWorker(
+      name: name, age: age, phone: phone, nid: nid, union: union, role: role);
+    await refresh();
+    return result;
+  }
+
   Future<void> sync() async {
     if (syncing || pending == 0) return;
     syncing = true;

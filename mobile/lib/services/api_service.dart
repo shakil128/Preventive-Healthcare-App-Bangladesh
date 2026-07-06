@@ -55,6 +55,35 @@ class ApiService {
         .toList();
   }
 
+  /// Onboard a field officer on the server. The backend creates the Worker and
+  /// the login **User** row (persisted in PostgreSQL) and generates the
+  /// username/password, returning them so the portal shows the admin the exact
+  /// credentials the officer signs in with. Throws on network failure so the
+  /// caller can tell the admin the account was *not* created offline.
+  Future<({Worker worker, String username, String password})> onboardWorker({
+    required String name,
+    required int age,
+    required String phone,
+    required String nid,
+    required String union,
+    required WorkerRole role,
+  }) async {
+    final res = await _dio.post('/api/workers', data: {
+      'name': name,
+      'age': age,
+      'phone': phone,
+      'nid': nid,
+      'union': union,
+      'role': role.label, // backend enum names are upper-case: FWA/FWV/CHCP/HA
+    });
+    final body = Map<String, dynamic>.from(res.data as Map);
+    return (
+      worker: Worker.fromJson(Map<String, dynamic>.from(body['worker'] as Map)),
+      username: body['username'] as String,
+      password: body['password'] as String,
+    );
+  }
+
   /// Push the batched offline queue; returns the ref ids the server acknowledged.
   Future<Set<String>> sync(List<SyncQueueItem> items) async {
     final res = await _dio.post('/api/sync', data: {

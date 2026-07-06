@@ -63,6 +63,23 @@ class Repository {
     await _db.enqueue('worker', w.id, 'Onboarded ${w.name}');
   }
 
+  /// Onboard a field officer through the backend so the User + Worker rows are
+  /// created in PostgreSQL and the server-generated credentials come back. The
+  /// worker is cached locally so the portal list updates immediately.
+  Future<({Worker worker, String username, String password})> onboardWorker({
+    required String name,
+    required int age,
+    required String phone,
+    required String nid,
+    required String union,
+    required WorkerRole role,
+  }) async {
+    final result = await _api.onboardWorker(
+      name: name, age: age, phone: phone, nid: nid, union: union, role: role);
+    await _db.putWorker(result.worker);
+    return result;
+  }
+
   /// Flush the sync queue to the backend, clearing only acknowledged records.
   /// Returns the number flushed. Falls back to a local clear when offline so the
   /// UX still advances (the design reference simulated the round-trip).
