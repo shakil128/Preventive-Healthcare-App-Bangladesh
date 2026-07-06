@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../domain/models.dart';
 import '../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../widgets/widgets.dart';
 
 /// Multi-field registration capturing personal, location (GPS) & pregnancy data.
-/// Fields are pre-filled to match the design reference; saving advances to the
-/// first ANC visit.
+/// Fields are pre-filled to match the design reference; saving persists the new
+/// beneficiary to PostgreSQL and advances to the first ANC visit.
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -16,8 +17,63 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterPage> {
+  final _name = TextEditingController(text: 'Rahima Begum');
+  final _age = TextEditingController(text: '19');
+  final _mobile = TextEditingController(text: '');
+  final _nid = TextEditingController(text: '1990 4521 8847');
+  final _village = TextEditingController(text: 'Char Bhola');
+  final _union = TextEditingController(text: 'Char Bhola');
+  final _lmp = TextEditingController(text: '05 Jan 2026');
+  final _gravida = TextEditingController(text: '2');
+  final _para = TextEditingController(text: '1');
+  final _blood = TextEditingController(text: 'B+');
+
   String _gps = '22.318° N, 90.951° E';
   bool _capturing = false;
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    for (final c in [_name, _age, _mobile, _nid, _village, _union, _lmp, _gravida, _para, _blood]) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final state = context.read<AppState>();
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _saving = true);
+    final beneficiary = Beneficiary(
+      id: 'b${DateTime.now().millisecondsSinceEpoch}',
+      name: _name.text.trim(),
+      bn: '',
+      type: BeneficiaryType.anc,
+      village: _village.text.trim(),
+      code: 'ANC-${DateTime.now().millisecondsSinceEpoch % 10000}',
+      risk: RiskLevel.low,
+      next: 'Due today',
+      age: int.tryParse(_age.text.trim()),
+      weeks: 0,
+      anc: 0,
+      edd: '12 Aug 2026',
+    );
+    try {
+      await state.addBeneficiary(beneficiary);
+      if (!mounted) return;
+      // Attach the first ANC visit to the beneficiary we just created.
+      state.selectedId = beneficiary.id;
+      state.go(AppScreen.visit, AppTab.add);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+            'Could not save to server · সার্ভারে সংরক্ষণ ব্যর্থ — সংযোগ দেখে আবার চেষ্টা করুন'),
+      ));
+    }
+  }
 
   void _captureGps() {
     setState(() => _capturing = true);
@@ -58,15 +114,18 @@ class _RegisterScreenState extends State<RegisterPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 child: Column(
                   children: [
-                    _field('Full name · নাম', 'Rahima Begum'),
+                    _field('Full name · নাম', _name),
                     Row(
                       children: [
-                        Expanded(child: _field('Age · বয়স', '19')),
+                        Expanded(child: _field('Age · বয়স', _age)),
                         const SizedBox(width: 14),
-                        Expanded(flex: 2, child: _field('Mobile · মোবাইল', '017XX-XXXXXX')),
+                        Expanded(
+                            flex: 2,
+                            child: _field('Mobile · মোবাইল', _mobile,
+                                hint: '017XX-XXXXXX')),
                       ],
                     ),
-                    _field('NID / Birth reg. no.', '1990 4521 8847', last: true),
+                    _field('NID / Birth reg. no.', _nid, last: true),
                   ],
                 ),
               ),
@@ -78,9 +137,9 @@ class _RegisterScreenState extends State<RegisterPage> {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: _field('Village · গ্রাম', 'Char Bhola')),
+                        Expanded(child: _field('Village · গ্রাম', _village)),
                         const SizedBox(width: 14),
-                        Expanded(child: _field('Union', 'Char Bhola')),
+                        Expanded(child: _field('Union', _union)),
                       ],
                     ),
                     Padding(
@@ -117,7 +176,7 @@ class _RegisterScreenState extends State<RegisterPage> {
                   children: [
                     Row(
                       children: [
-                        Expanded(child: _field('LMP · শেষ মাসিক', '05 Jan 2026')),
+                        Expanded(child: _field('LMP · শেষ মাসিক', _lmp)),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -139,11 +198,11 @@ class _RegisterScreenState extends State<RegisterPage> {
                     ),
                     Row(
                       children: [
-                        Expanded(child: _field('Gravida', '2', last: true)),
+                        Expanded(child: _field('Gravida', _gravida, last: true)),
                         const SizedBox(width: 14),
-                        Expanded(child: _field('Para', '1', last: true)),
+                        Expanded(child: _field('Para', _para, last: true)),
                         const SizedBox(width: 14),
-                        Expanded(child: _field('Blood grp', 'B+', last: true)),
+                        Expanded(child: _field('Blood grp', _blood, last: true)),
                       ],
                     ),
                   ],
@@ -151,12 +210,14 @@ class _RegisterScreenState extends State<RegisterPage> {
               ),
               const SizedBox(height: 18),
               PrimaryButton(
-                label: 'Save & start first ANC visit →',
-                onPressed: () => state.go(AppScreen.visit, AppTab.add),
+                label: _saving
+                    ? 'Saving…'
+                    : 'Save & start first ANC visit →',
+                onPressed: _saving ? null : _save,
               ),
               const SizedBox(height: 9),
               const Center(
-                child: Text('Saved offline · will sync automatically',
+                child: Text('Saved to the central register (PostgreSQL)',
                     style: TextStyle(fontSize: 11.5, color: T.textMuted)),
               ),
             ],
@@ -166,7 +227,8 @@ class _RegisterScreenState extends State<RegisterPage> {
     );
   }
 
-  Widget _field(String label, String value, {bool last = false}) {
+  Widget _field(String label, TextEditingController controller,
+      {bool last = false, String? hint}) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
@@ -178,9 +240,10 @@ class _RegisterScreenState extends State<RegisterPage> {
           Text(label, style: const TextStyle(fontSize: 11.5, color: T.text2)),
           const SizedBox(height: 3),
           TextFormField(
-            initialValue: value,
+            controller: controller,
             style: const TextStyle(fontSize: 14.5, color: T.text),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
+              hintText: hint,
               isDense: true,
               border: InputBorder.none,
               contentPadding: EdgeInsets.zero,

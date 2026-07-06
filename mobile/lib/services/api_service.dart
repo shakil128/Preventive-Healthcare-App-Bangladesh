@@ -47,6 +47,29 @@ class ApiService {
         .toList();
   }
 
+  /// Register (or upsert) a beneficiary. The backend persists it in PostgreSQL
+  /// and returns the stored record, which becomes the local cache's truth.
+  Future<Beneficiary> registerBeneficiary(Beneficiary b) async {
+    final res = await _dio.post('/api/beneficiaries', data: b.toJson());
+    return Beneficiary.fromJson(Map<String, dynamic>.from(res.data as Map));
+  }
+
+  /// Record an ANC visit. The backend classifies the risk server-side, updates
+  /// the beneficiary in PostgreSQL, and returns the updated record.
+  Future<Beneficiary> recordAncVisit(String id, AncVisit visit) async {
+    final res =
+        await _dio.post('/api/beneficiaries/$id/anc-visit', data: visit.toJson());
+    return Beneficiary.fromJson(Map<String, dynamic>.from(res.data as Map));
+  }
+
+  /// Record a child growth/nutrition assessment. The backend classifies the
+  /// MUAC status, updates the beneficiary in PostgreSQL, and returns it.
+  Future<Beneficiary> recordChildAssessment(String id, ChildAssessment a) async {
+    final res = await _dio.post('/api/beneficiaries/$id/child-assessment',
+        data: a.toJson());
+    return Beneficiary.fromJson(Map<String, dynamic>.from(res.data as Map));
+  }
+
   Future<List<Worker>> workers() async {
     final res = await _dio.get('/api/workers');
     final list = res.data as List;

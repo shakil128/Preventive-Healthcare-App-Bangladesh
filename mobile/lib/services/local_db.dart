@@ -84,6 +84,17 @@ class LocalDb {
     );
   }
 
+  /// Refresh the whole beneficiary cache from an authoritative backend snapshot.
+  Future<void> replaceBeneficiaries(List<Beneficiary> list) async {
+    final db = await _database;
+    final batch = db.batch();
+    batch.delete('beneficiaries');
+    for (final b in list) {
+      batch.insert('beneficiaries', {'id': b.id, 'data': jsonEncode(b.toJson())});
+    }
+    await batch.commit(noResult: true);
+  }
+
   // ---- Workers ----
 
   Future<List<Worker>> workers() async {
@@ -101,6 +112,17 @@ class LocalDb {
       {'id': w.id, 'data': jsonEncode(w.toJson())},
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+  }
+
+  /// Refresh the whole worker cache from an authoritative backend snapshot.
+  Future<void> replaceWorkers(List<Worker> list) async {
+    final db = await _database;
+    final batch = db.batch();
+    batch.delete('workers');
+    for (final w in list) {
+      batch.insert('workers', {'id': w.id, 'data': jsonEncode(w.toJson())});
+    }
+    await batch.commit(noResult: true);
   }
 
   // ---- Sync queue ----

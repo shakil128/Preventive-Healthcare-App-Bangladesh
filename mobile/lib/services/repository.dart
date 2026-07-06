@@ -16,46 +16,51 @@ class Repository {
 
   ApiService get api => _api;
 
-  Future<List<Beneficiary>> beneficiaries() => _db.beneficiaries();
+  /// Read-through: PostgreSQL is the source of truth. Fetch the authoritative
+  /// list, refresh the local cache, and return it. If the backend is
+  /// unreachable, fall back to the cached copy so the field app still works
+  /// offline.
+  Future<List<Beneficiary>> beneficiaries() async {
+    try {
+      final remote = await _api.beneficiaries();
+      await _db.replaceBeneficiaries(remote);
+      return remote;
+    } catch (_) {
+      return _db.beneficiaries();
+    }
+  }
+
+  Future<List<Worker>> workers() async {
+    try {
+      final remote = await _api.workers();
+      await _db.replaceWorkers(remote);
+      return remote;
+    } catch (_) {
+      return _db.workers();
+    }
+  }
+
   Future<Beneficiary?> beneficiary(String id) => _db.beneficiary(id);
-  Future<List<Worker>> workers() => _db.workers();
   Future<int> pendingCount() => _db.pendingCount();
 
+  /// Write-through: register the beneficiary in PostgreSQL first, then cache the
+  /// stored record. Throws on network failure so the UI can tell the officer the
+  /// entry was not saved (rather than silently keeping a local-only ghost row).
   Future<void> addBeneficiary(Beneficiary b) async {
-    await _db.putBeneficiary(b);
-    await _db.enqueue('registration', b.id, 'Registered ${b.name}');
+    final saved = await _api.registerBeneficiary(b);
+    await _db.putBeneficiary(saved);
   }
 
-  /// Record an ANC visit outcome against a beneficiary (risk + next visit).
-  Future<void> recordAncVisit(
-    String id, {
-    required RiskLevel risk,
-    String? reason,
-    required String next,
-  }) async {
-    final b = await _db.beneficiary(id);
-    if (b == null) return;
-    final updated = b.copyWith(
-      risk: risk,
-      reason: reason,
-      next: next,
-      anc: b.anc == null ? null : b.anc! + 1,
-    );
+  /// Record an ANC visit. The backend classifies the risk and persists the
+  /// update in PostgreSQL; the returned record refreshes the cache.
+  Future<void> recordAncVisit(String id, AncVisit visit) async {
+    final updated = await _api.recordAncVisit(id, visit);
     await _db.putBeneficiary(updated);
-    await _db.enqueue('visit', id, 'ANC visit for ${b.name}');
   }
 
-  Future<void> recordChildAssessment(
-    String id,
-    ChildAssessment assessment, {
-    required RiskLevel risk,
-    String? reason,
-  }) async {
-    final b = await _db.beneficiary(id);
-    if (b == null) return;
-    final updated = b.copyWith(risk: risk, reason: reason, muac: assessment.muac);
+  Future<void> recordChildAssessment(String id, ChildAssessment assessment) async {
+    final updated = await _api.recordChildAssessment(id, assessment);
     await _db.putBeneficiary(updated);
-    await _db.enqueue('child-assessment', id, 'Child assessment for ${b.name} (MUAC ${assessment.muac})');
   }
 
   Future<void> addWorker(Worker w) async {

@@ -109,14 +109,19 @@ class _VisitScreenState extends State<AncVisitPage> {
 
   Future<void> _save() async {
     final state = context.read<AppState>();
-    final risk = computeAncRisk(_v);
-    await state.recordAncVisit(
-      state.selectedId,
-      risk: risk.level,
-      reason: risk.reasons.isEmpty ? null : risk.reasons.first,
-      next: '13 Jul 2026',
-    );
-    state.go(AppScreen.profile, AppTab.cases);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // Persist to PostgreSQL; the backend classifies risk and returns the
+      // updated beneficiary, which refreshes the local cache.
+      await state.recordAncVisit(state.selectedId, _v);
+      if (!mounted) return;
+      state.go(AppScreen.profile, AppTab.cases);
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+            'Could not save to server · সার্ভারে সংরক্ষণ ব্যর্থ — সংযোগ দেখে আবার চেষ্টা করুন'),
+      ));
+    }
   }
 
   @override

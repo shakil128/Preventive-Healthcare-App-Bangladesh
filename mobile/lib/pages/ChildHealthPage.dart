@@ -43,19 +43,19 @@ class _ChildScreenState extends State<ChildHealthPage> {
 
   Future<void> _save() async {
     final state = context.read<AppState>();
-    final status = classifyMuac(_child.muac, _child.edema);
-    final risk = status.short == 'SAM'
-        ? RiskLevel.high
-        : status.short == 'MAM'
-            ? RiskLevel.medium
-            : RiskLevel.low;
-    await state.recordChildAssessment(
-      state.selectedId,
-      _child,
-      risk: risk,
-      reason: 'MUAC ${_child.muac} cm — ${status.short}',
-    );
-    state.go(AppScreen.profile, AppTab.cases);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // Persist to PostgreSQL; the backend classifies the MUAC status and
+      // returns the updated beneficiary, which refreshes the local cache.
+      await state.recordChildAssessment(state.selectedId, _child);
+      if (!mounted) return;
+      state.go(AppScreen.profile, AppTab.cases);
+    } catch (_) {
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+            'Could not save to server · সার্ভারে সংরক্ষণ ব্যর্থ — সংযোগ দেখে আবার চেষ্টা করুন'),
+      ));
+    }
   }
 
   @override

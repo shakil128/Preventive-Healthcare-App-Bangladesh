@@ -135,15 +135,18 @@ class AppState extends ChangeNotifier {
 
   // ---- writes (delegate to repo, then refresh cache) ----
 
-  Future<void> recordAncVisit(String id,
-      {required RiskLevel risk, String? reason, required String next}) async {
-    await repo.recordAncVisit(id, risk: risk, reason: reason, next: next);
+  Future<void> addBeneficiary(Beneficiary b) async {
+    await repo.addBeneficiary(b);
     await refresh();
   }
 
-  Future<void> recordChildAssessment(String id, ChildAssessment a,
-      {required RiskLevel risk, String? reason}) async {
-    await repo.recordChildAssessment(id, a, risk: risk, reason: reason);
+  Future<void> recordAncVisit(String id, AncVisit visit) async {
+    await repo.recordAncVisit(id, visit);
+    await refresh();
+  }
+
+  Future<void> recordChildAssessment(String id, ChildAssessment a) async {
+    await repo.recordChildAssessment(id, a);
     await refresh();
   }
 
